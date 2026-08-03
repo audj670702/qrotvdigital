@@ -6,13 +6,14 @@
   <meta name="theme-color" content="#0b0c0e">
   <meta name="description" content="QRO TV DIGITAL: transmisión, producciones, clips y revista.">
   <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="preload" href="./assets/logo-qro-tv-digital.webp" as="image" type="image/webp" fetchpriority="high">
   <link rel="stylesheet" href="./src/styles.css">
   <title>QRO TV DIGITAL</title>
 </head>
 <body>
   <header class="topbar">
     <a class="brand" href="#inicio" aria-label="QRO TV DIGITAL, inicio">
-      <img src="./assets/logo-qro-tv-digital.png" alt="QRO TV DIGITAL">
+      <img src="./assets/logo-qro-tv-digital.webp" alt="QRO TV DIGITAL" width="360" height="182" fetchpriority="high">
     </a>
     <button class="menu-button" type="button" aria-label="Abrir menú" aria-expanded="false">☰</button>
     <nav aria-label="Navegación principal">
@@ -74,7 +75,7 @@
     </section>
   </main>
 
-  <footer><img src="./assets/logo-qro-tv-digital.png" alt="QRO TV DIGITAL"><p>Transmisión · Producciones · Clips · Revista</p><small>© 2026 QRO TV DIGITAL · Versión inicial</small></footer>
+  <footer><img src="./assets/logo-qro-tv-digital.webp" alt="QRO TV DIGITAL" width="360" height="182" loading="lazy"><p>Transmisión · Producciones · Clips · Revista</p><small class="app-version">Versión 1.0.0</small></footer>
   <script src="./src/app.js" defer></script>
 </body>
 </html>
