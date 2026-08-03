@@ -12,17 +12,18 @@ let indiceActual = 0;
 let youtubePlayer = null;
 let youtubeApiLista = false;
 let reproduccionSolicitada = false;
+let sonidoActivado = false;
 
 const ui = {
   status: document.getElementById('broadcastStatus'),
   description: document.getElementById('broadcastDescription'),
   nowTitle: document.getElementById('nowTitle'),
   nextTitle: document.getElementById('nextTitle'),
-  shell: document.getElementById('playerShell'),
   fallback: document.getElementById('playerFallback'),
   playerStatus: document.getElementById('playerStatus'),
   playerAction: document.getElementById('playerAction'),
-  playerCaption: document.getElementById('playerCaption')
+  playerCaption: document.getElementById('playerCaption'),
+  soundInvitation: document.getElementById('soundInvitation')
 };
 
 menuButton?.addEventListener('click', () => {
@@ -54,7 +55,7 @@ function extraerYoutubeId(referencia = '') {
     if (host.endsWith('youtube.com')) {
       if (url.searchParams.get('v')) return url.searchParams.get('v');
       const partes = url.pathname.split('/').filter(Boolean);
-      const marcador = partes.findIndex(p => ['live', 'embed', 'shorts'].includes(p));
+      const marcador = partes.findIndex((p) => ['live', 'embed', 'shorts'].includes(p));
       if (marcador >= 0) return partes[marcador + 1] || '';
     }
   } catch (_) {
@@ -73,7 +74,9 @@ async function consultarTransmision() {
         headers: { Accept: 'application/json' }
       });
       const datos = await respuesta.json().catch(() => ({}));
-      if (!respuesta.ok || !datos.ok) throw new Error(datos.mensaje || `Respuesta HTTP ${respuesta.status}`);
+      if (!respuesta.ok || !datos.ok) {
+        throw new Error(datos.mensaje || `Respuesta HTTP ${respuesta.status}`);
+      }
       return datos;
     } catch (error) {
       ultimoError = error;
@@ -92,12 +95,13 @@ function mostrarError(mensaje) {
   ui.playerAction.textContent = '↻';
   ui.playerAction.hidden = false;
   ui.fallback.hidden = false;
+  ui.soundInvitation.hidden = true;
 }
 
 function actualizarInformacion() {
   const actual = elementos[indiceActual];
   const siguiente = elementos[(indiceActual + 1) % elementos.length];
-  ui.status.textContent = configuracion?.transmision?.leyendaEstado || (configuracion?.transmision?.enVivo ? 'EN VIVO' : 'TRANSMISIÓN CONTINUA');
+  ui.status.textContent = configuracion?.transmision?.leyendaEstado || 'TRANSMISIÓN CONTINUA';
   ui.description.textContent = configuracion?.transmision?.descripcion || configuracion?.playlist?.descripcion || 'Programación digital continua de QRO TV DIGITAL.';
   ui.nowTitle.textContent = actual?.titulo || 'Contenido sin título';
   if (elementos.length > 1) ui.nextTitle.textContent = `Siguiente: ${siguiente?.titulo || 'Contenido siguiente'}`;
@@ -105,24 +109,61 @@ function actualizarInformacion() {
   else ui.nextTitle.textContent = 'Último contenido de la playlist.';
 }
 
+function mostrarInvitacionSonido() {
+  if (!ui.soundInvitation || sonidoActivado) return;
+  ui.soundInvitation.hidden = false;
+}
+
+function ocultarInvitacionSonido() {
+  if (ui.soundInvitation) ui.soundInvitation.hidden = true;
+}
+
 function reproducirYoutube(elemento) {
   const videoId = extraerYoutubeId(elemento?.referenciaVideo);
   if (!videoId) return avanzar();
+
   actualizarInformacion();
   ui.fallback.hidden = true;
+
   if (!youtubePlayer) {
     youtubePlayer = new YT.Player('youtubePlayer', {
       videoId,
       width: '100%',
       height: '100%',
-      playerVars: { autoplay: 1, playsinline: 1, rel: 0, modestbranding: 1 },
+      playerVars: {
+        autoplay: 1,
+        mute: 1,
+        playsinline: 1,
+        rel: 0,
+        modestbranding: 1
+      },
       events: {
-        onReady: (event) => event.target.playVideo(),
-        onStateChange: (event) => { if (event.data === YT.PlayerState.ENDED) avanzar(); },
+        onReady: (event) => {
+          event.target.mute();
+          event.target.playVideo();
+          mostrarInvitacionSonido();
+        },
+        onStateChange: (event) => {
+          if (event.data === YT.PlayerState.PLAYING && !sonidoActivado) {
+            mostrarInvitacionSonido();
+          }
+          if (event.data === YT.PlayerState.ENDED) avanzar();
+        },
+        onAutoplayBlocked: () => {
+          ui.fallback.hidden = false;
+          ui.playerStatus.textContent = 'TOCA PARA REPRODUCIR';
+          ui.playerCaption.textContent = 'El navegador bloqueó la reproducción automática.';
+          ui.playerAction.textContent = '▶';
+          ui.playerAction.hidden = false;
+        },
         onError: () => avanzar()
       }
     });
-  } else youtubePlayer.loadVideoById(videoId);
+  } else {
+    youtubePlayer.mute();
+    youtubePlayer.loadVideoById(videoId);
+    mostrarInvitacionSonido();
+  }
 }
 
 function avanzar() {
@@ -141,6 +182,7 @@ function avanzar() {
   ui.playerStatus.textContent = 'PROGRAMACIÓN FINALIZADA';
   ui.playerCaption.textContent = 'La playlist llegó al final.';
   ui.playerAction.hidden = false;
+  ocultarInvitacionSonido();
 }
 
 function reproducirActual() {
@@ -156,7 +198,7 @@ function reproducirActual() {
     reproducirYoutube(elemento);
     return;
   }
-  mostrarError(`El origen ${elemento.tipoFuente || 'desconocido'} todavía no está habilitado en esta versión.`);
+  mostrarError(`El origen ${elemento.tipoFuente || 'desconocido'} todavía no está habilitado.`);
 }
 
 async function iniciarReproduccion() {
@@ -168,20 +210,42 @@ async function iniciarReproduccion() {
     const transmision = configuracion.transmision || {};
     const modo = transmision.modoEmision || 'FUERA_DEL_AIRE';
     if (modo === 'FUERA_DEL_AIRE') return mostrarError('La señal se encuentra fuera del aire.');
-    if (modo !== 'PLAYLIST') return mostrarError('La señal externa todavía no está habilitada en esta versión de la app.');
-    elementos = Array.isArray(configuracion.elementos) ? configuracion.elementos.filter(item => item.referenciaVideo) : [];
-    if (!configuracion.playlist || !elementos.length) return mostrarError('La transmisión activa no contiene videos disponibles.');
+    if (modo !== 'PLAYLIST') return mostrarError('La señal externa todavía no está habilitada.');
+    elementos = Array.isArray(configuracion.elementos)
+      ? configuracion.elementos.filter((item) => item.referenciaVideo)
+      : [];
+    if (!configuracion.playlist || !elementos.length) {
+      return mostrarError('La transmisión activa no contiene videos disponibles.');
+    }
     indiceActual = 0;
     reproducirActual();
   } catch (error) {
     console.error('No fue posible iniciar la transmisión:', error);
-    mostrarError('No fue posible conectar con la señal. Verifica que el endpoint público de Wix esté publicado.');
+    mostrarError(error?.message || 'No fue posible conectar con la señal.');
   }
 }
 
+ui.soundInvitation?.addEventListener('click', () => {
+  if (!youtubePlayer) return;
+  try {
+    youtubePlayer.unMute();
+    youtubePlayer.setVolume(100);
+    youtubePlayer.playVideo();
+    sonidoActivado = true;
+    ocultarInvitacionSonido();
+  } catch (error) {
+    console.warn('No fue posible activar el sonido:', error);
+  }
+});
+
 ui.playerAction?.addEventListener('click', () => {
-  if (youtubePlayer?.playVideo) youtubePlayer.playVideo();
-  else iniciarReproduccion();
+  if (youtubePlayer?.playVideo) {
+    youtubePlayer.playVideo();
+    ui.fallback.hidden = true;
+    mostrarInvitacionSonido();
+  } else {
+    iniciarReproduccion();
+  }
 });
 
 document.addEventListener('visibilitychange', () => {
@@ -209,7 +273,9 @@ function abrirModalInstalacion() {
   } else {
     iosInstallSteps.hidden = true;
     installModalAction.textContent = deferredInstallPrompt ? 'Instalar' : 'Cerrar';
-    installModalText.textContent = deferredInstallPrompt ? 'Instala QRO TV DIGITAL para abrirla desde tu pantalla de inicio.' : 'Abre el menú del navegador y elige Instalar aplicación o Agregar a pantalla de inicio. En Chrome también puede aparecer el icono de instalación en la barra de direcciones.';
+    installModalText.textContent = deferredInstallPrompt
+      ? 'Instala QRO TV DIGITAL para abrirla desde tu pantalla de inicio.'
+      : 'Abre el menú del navegador y elige Instalar aplicación o Agregar a pantalla de inicio.';
   }
   installModal.hidden = false;
   document.body.classList.add('modal-abierto');
@@ -242,7 +308,6 @@ window.addEventListener('beforeinstallprompt', (event) => {
 window.addEventListener('appinstalled', () => {
   deferredInstallPrompt = null;
   if (installButton) {
-    installButton.hidden = false;
     installButton.disabled = true;
     installButton.textContent = '✓ Instalada';
   }
@@ -251,7 +316,9 @@ window.addEventListener('appinstalled', () => {
 
 installButton?.addEventListener('click', abrirModalInstalacion);
 closeInstallModal?.addEventListener('click', cerrarModalInstalacion);
-installModal?.addEventListener('click', (event) => { if (event.target === installModal) cerrarModalInstalacion(); });
+installModal?.addEventListener('click', (event) => {
+  if (event.target === installModal) cerrarModalInstalacion();
+});
 installModalAction?.addEventListener('click', async () => {
   if (esIOS || !deferredInstallPrompt) {
     cerrarModalInstalacion();
