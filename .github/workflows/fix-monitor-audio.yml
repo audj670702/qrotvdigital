@@ -101,3 +101,5 @@ jobs:
           git add src/app.js
           git commit -m "Prevent autoplay fallback in monitor mode"
           git push
+
+# Trigger: 2026-08-03T16:12-06:00
