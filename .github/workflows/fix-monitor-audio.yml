@@ -1,0 +1,103 @@
+name: Fix monitor audio activation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/fix-monitor-audio.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Patch monitor audio behavior
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('src/app.js')
+          text = path.read_text(encoding='utf-8')
+
+          old_autoplay = """      onAutoplayBlocked: () => {
+        ui.fallback.hidden = false;
+        ui.playerStatus.textContent =
+          'TOCA PARA REPRODUCIR';
+        ui.playerCaption.textContent =
+          'El navegador bloqueó la reproducción automática.';
+        ui.playerAction.textContent = '▶';
+        ui.playerAction.hidden = false;
+      },"""
+
+          new_autoplay = """      onAutoplayBlocked: () => {
+        if (ES_MONITOR) {
+          sonidoActivado = false;
+
+          try {
+            youtubePlayer?.mute?.();
+            youtubePlayer?.playVideo?.();
+          } catch (_) {}
+
+          ui.fallback.hidden = true;
+          mostrarInvitacionSonido();
+          return;
+        }
+
+        ui.fallback.hidden = false;
+        ui.playerStatus.textContent =
+          'TOCA PARA REPRODUCIR';
+        ui.playerCaption.textContent =
+          'El navegador bloqueó la reproducción automática.';
+        ui.playerAction.textContent = '▶';
+        ui.playerAction.hidden = false;
+      },"""
+
+          if old_autoplay not in text:
+            raise SystemExit('No se encontró el bloque onAutoplayBlocked esperado.')
+
+          text = text.replace(old_autoplay, new_autoplay, 1)
+
+          old_sound = """    try {
+      youtubePlayer.unMute?.();
+      youtubePlayer.setVolume?.(100);
+      youtubePlayer.playVideo?.();
+
+      sonidoActivado = true;
+      ocultarInvitacionSonido();
+    } catch (error) {"""
+
+          new_sound = """    try {
+      const estadoAntes = youtubePlayer.getPlayerState?.();
+      const estabaReproduciendo =
+        estadoAntes === YT.PlayerState.PLAYING ||
+        estadoAntes === YT.PlayerState.BUFFERING;
+
+      youtubePlayer.unMute?.();
+      youtubePlayer.setVolume?.(100);
+
+      if (!ES_MONITOR || !estabaReproduciendo) {
+        youtubePlayer.playVideo?.();
+      }
+
+      sonidoActivado = true;
+      ocultarInvitacionSonido();
+      ui.fallback.hidden = true;
+    } catch (error) {"""
+
+          if old_sound not in text:
+            raise SystemExit('No se encontró el bloque de activación de sonido esperado.')
+
+          text = text.replace(old_sound, new_sound, 1)
+          path.write_text(text, encoding='utf-8')
+
+      - name: Commit patched app
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/app.js
+          git commit -m "Prevent autoplay fallback in monitor mode"
+          git push
