@@ -23,12 +23,31 @@
     <button id="installAppButton" class="install-app-button" type="button" aria-label="Instalar QRO TV DIGITAL"><span aria-hidden="true">＋</span> Instalar</button>
   </header>
   <main id="inicio">
-    <section class="broadcast" id="transmision"><div class="broadcast-copy"><p class="eyebrow"><span class="signal-dot"></span> <span id="broadcastStatus">CARGANDO TRANSMISIÓN</span></p><h1>La señal de Querétaro,<br><em>creada para internet.</em></h1><p id="broadcastDescription" class="lead">Consultando la programación activa.</p><div class="now-playing"><span>AHORA</span><strong id="nowTitle">Preparando señal…</strong><small id="nextTitle">Espera un momento.</small></div></div><div id="playerShell" class="player-shell" aria-live="polite"><div id="youtubePlayer" class="player-frame"></div><div id="playerFallback" class="player-fallback"><span id="playerStatus" class="status">CARGANDO</span><button id="playerAction" class="play" type="button" aria-label="Iniciar reproducción">▶</button><span id="playerCaption" class="player-caption">Preparando reproductor</span></div></div></section>
+    <section class="broadcast" id="transmision">
+      <div class="broadcast-copy">
+        <p class="eyebrow"><span class="signal-dot"></span> <span id="broadcastStatus">CARGANDO TRANSMISIÓN</span></p>
+        <h1>La señal de Querétaro,<br><em>creada para internet.</em></h1>
+        <p id="broadcastDescription" class="lead">Consultando la programación activa.</p>
+        <div class="now-playing"><span>AHORA</span><strong id="nowTitle">Preparando señal…</strong><small id="nextTitle">Espera un momento.</small></div>
+      </div>
+      <div id="playerShell" class="player-shell" aria-live="polite">
+        <div id="youtubePlayer" class="player-frame"></div>
+        <button id="soundInvitation" class="sound-invitation" type="button" hidden aria-label="Activar sonido">
+          <span class="sound-icon" aria-hidden="true">🔇</span>
+          <span class="sound-copy"><strong>Activar sonido</strong><small>La transmisión inició en silencio</small></span>
+        </button>
+        <div id="playerFallback" class="player-fallback">
+          <span id="playerStatus" class="status">CARGANDO</span>
+          <button id="playerAction" class="play" type="button" aria-label="Iniciar reproducción">▶</button>
+          <span id="playerCaption" class="player-caption">Preparando reproductor</span>
+        </div>
+      </div>
+    </section>
     <section class="content-section" id="producciones"><header class="section-heading"><div><p class="eyebrow">CATÁLOGO</p><h2>Producciones</h2></div><a href="#producciones">Ver catálogo <span>→</span></a></header><div class="production-grid"><article class="card featured-card"><div class="card-art art-one"><span>ESTRENO</span></div><div class="card-copy"><p>ACTUALIDAD</p><h3>Querétaro en perspectiva</h3><span>Conversaciones para entender el presente.</span></div></article><article class="card"><div class="card-art art-two"><span>8 EPISODIOS</span></div><div class="card-copy"><p>ENTREVISTAS</p><h3>Voces de la ciudad</h3><span>Personas que construyen nuevas historias.</span></div></article><article class="card"><div class="card-art art-three"><span>NUEVA SERIE</span></div><div class="card-copy"><p>CULTURA</p><h3>Desde Querétaro</h3><span>Identidad, arte y memoria compartida.</span></div></article></div></section>
     <section class="clips-section" id="clips"><header class="section-heading light"><div><p class="eyebrow">FORMATO BREVE</p><h2>Clips</h2></div><a href="#clips">Ver todos <span>→</span></a></header><div class="clip-row"><article class="clip"><div class="clip-image clip-one"><span>▶</span><small>01:24</small></div><h3>Una idea en un minuto</h3><p>Lo esencial, sin rodeos.</p></article><article class="clip"><div class="clip-image clip-two"><span>▶</span><small>02:10</small></div><h3>La frase del día</h3><p>Una voz que vale la pena escuchar.</p></article><article class="clip"><div class="clip-image clip-three"><span>▶</span><small>00:48</small></div><h3>Así se vivió</h3><p>Momentos de nuestra ciudad.</p></article><article class="clip"><div class="clip-image clip-four"><span>▶</span><small>01:36</small></div><h3>Detrás de cámara</h3><p>El otro lado de la producción.</p></article></div></section>
     <section class="magazine" id="revista"><header class="section-heading"><div><p class="eyebrow">LECTURA + IMAGEN</p><h2>Revista</h2></div><a href="#revista">Explorar revista <span>→</span></a></header><article class="magazine-feature"><div class="magazine-image"><span>REPORTAJE</span></div><div class="magazine-copy"><p class="kicker">CIUDAD · 8 MIN DE LECTURA</p><h3>Querétaro también se cuenta desde sus calles</h3><p>Una mirada visual a los espacios, las personas y las ideas que transforman la vida cotidiana.</p><a href="#revista">Leer artículo <span>→</span></a></div></article></section>
   </main>
-  <footer><img src="./assets/logo-qro-tv-digital.webp" alt="QRO TV DIGITAL" width="360" height="182" loading="lazy"><p>Transmisión · Producciones · Clips · Revista</p><small class="app-version">Versión 1.2.2</small></footer>
+  <footer><img src="./assets/logo-qro-tv-digital.webp" alt="QRO TV DIGITAL" width="360" height="182" loading="lazy"><p>Transmisión · Producciones · Clips · Revista</p><small class="app-version">Versión 1.3.0</small></footer>
   <div id="installModal" class="install-modal" hidden><div class="install-modal-card" role="dialog" aria-modal="true" aria-labelledby="installModalTitle"><button id="closeInstallModal" class="install-modal-close" type="button" aria-label="Cerrar">×</button><div class="install-modal-icon">📲</div><h2 id="installModalTitle">Instalar QRO TV DIGITAL</h2><p id="installModalText">Agrega la app a tu pantalla de inicio para abrirla como una aplicación.</p><div id="iosInstallSteps" class="ios-install-steps" hidden><p><strong>En iPhone o iPad:</strong></p><ol><li>Abre esta página en Safari.</li><li>Toca el botón <strong>Compartir</strong> ⎋.</li><li>Selecciona <strong>Agregar a pantalla de inicio</strong>.</li><li>Confirma con <strong>Agregar</strong>.</li></ol></div><button id="installModalAction" class="install-modal-action" type="button">Instalar</button></div></div>
   <script src="https://www.youtube.com/iframe_api"></script><script src="./src/app.js" defer></script>
 </body>
