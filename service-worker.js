@@ -1,8 +1,9 @@
-const CACHE_NAME = "qro-tv-digital-v0.1.0";
+const CACHE_NAME = "qro-tv-digital-v0.2.0";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./manifest.webmanifest",
+  "./assets/logo-qro-tv-digital.png",
   "./src/styles.css",
   "./src/app.js"
 ];
