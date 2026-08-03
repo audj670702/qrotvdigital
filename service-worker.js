@@ -1,4 +1,4 @@
-const CACHE_NAME = "qro-tv-digital-v1.5.1";
+const CACHE_NAME = "qro-tv-digital-v1.6.0";
 const APP_SHELL = [
   "./",
   "./index.html",
