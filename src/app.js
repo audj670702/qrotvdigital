@@ -15,6 +15,7 @@ let indiceActual = 0;
 let segundoActual = 0;
 let youtubePlayer = null;
 let youtubeApiLista = false;
+let youtubePlayerListo = false;
 let reproduccionSolicitada = false;
 let sonidoActivado = false;
 let desfaseRelojServidorMs = 0;
@@ -36,17 +37,16 @@ const ui = {
 };
 
 menuButton?.addEventListener('click', () => {
-  const isOpen = navigation.classList.toggle('open');
-  menuButton.setAttribute('aria-expanded', String(isOpen));
-  menuButton.textContent = isOpen ? '✕' : '☰';
+  const abierto = navigation.classList.toggle('open');
+  menuButton.setAttribute('aria-expanded', String(abierto));
+  menuButton.textContent = abierto ? '✕' : '☰';
 });
 
 navigation?.addEventListener('click', (event) => {
-  if (event.target.matches('a')) {
-    navigation.classList.remove('open');
-    menuButton?.setAttribute('aria-expanded', 'false');
-    if (menuButton) menuButton.textContent = '☰';
-  }
+  if (!event.target.matches('a')) return;
+  navigation.classList.remove('open');
+  menuButton?.setAttribute('aria-expanded', 'false');
+  if (menuButton) menuButton.textContent = '☰';
 });
 
 window.onYouTubeIframeAPIReady = () => {
@@ -57,19 +57,23 @@ window.onYouTubeIframeAPIReady = () => {
 function extraerYoutubeId(referencia = '') {
   const valor = String(referencia).trim();
   if (/^[a-zA-Z0-9_-]{11}$/.test(valor)) return valor;
+
   try {
     const url = new URL(valor);
     const host = url.hostname.replace(/^www\./, '');
-    if (host === 'youtu.be') return url.pathname.split('/').filter(Boolean)[0] || '';
+
+    if (host === 'youtu.be') {
+      return url.pathname.split('/').filter(Boolean)[0] || '';
+    }
+
     if (host.endsWith('youtube.com')) {
       if (url.searchParams.get('v')) return url.searchParams.get('v');
       const partes = url.pathname.split('/').filter(Boolean);
       const marcador = partes.findIndex((p) => ['live', 'embed', 'shorts'].includes(p));
       if (marcador >= 0) return partes[marcador + 1] || '';
     }
-  } catch (_) {
-    return '';
-  }
+  } catch (_) {}
+
   return '';
 }
 
@@ -113,13 +117,8 @@ function aplicarConfiguracion(datos) {
   const transmision = datos?.transmision || {};
   const modo = transmision.modoEmision || 'FUERA_DEL_AIRE';
 
-  if (modo === 'FUERA_DEL_AIRE') {
-    throw new Error('La señal se encuentra fuera del aire.');
-  }
-
-  if (modo !== 'PLAYLIST') {
-    throw new Error('La señal externa todavía no está habilitada.');
-  }
+  if (modo === 'FUERA_DEL_AIRE') throw new Error('La señal se encuentra fuera del aire.');
+  if (modo !== 'PLAYLIST') throw new Error('La señal externa todavía no está habilitada.');
 
   const nuevosElementos = Array.isArray(datos?.elementos)
     ? datos.elementos.filter((item) => item.referenciaVideo)
@@ -189,13 +188,7 @@ function calcularPosicionCanal() {
     posicionCiclo -= duraciones[indice];
   }
 
-  return {
-    programada: false,
-    finalizada: false,
-    indice: 0,
-    segundo: 0,
-    duracionTotal
-  };
+  return { programada: false, finalizada: false, indice: 0, segundo: 0, duracionTotal };
 }
 
 async function consultarTransmision() {
@@ -209,7 +202,6 @@ async function consultarTransmision() {
         cache: 'no-store',
         headers: { Accept: 'application/json' }
       });
-
       const finSolicitud = Date.now();
       const fechaServidor = Date.parse(respuesta.headers.get('date') || '');
 
@@ -219,11 +211,9 @@ async function consultarTransmision() {
       }
 
       const datos = await respuesta.json().catch(() => ({}));
-
       if (!respuesta.ok || !datos.ok) {
         throw new Error(datos.mensaje || `Respuesta HTTP ${respuesta.status}`);
       }
-
       return datos;
     } catch (error) {
       ultimoError = error;
@@ -238,8 +228,7 @@ async function actualizarConfiguracionRemota() {
   actualizandoConfiguracion = true;
 
   try {
-    const datos = await consultarTransmision();
-    return aplicarConfiguracion(datos);
+    return aplicarConfiguracion(await consultarTransmision());
   } finally {
     actualizandoConfiguracion = false;
   }
@@ -303,10 +292,7 @@ function mostrarTransmisionProgramada(inicioEmisionMs) {
   ui.playerAction.hidden = true;
   ui.fallback.hidden = false;
   ocultarInvitacionSonido();
-
-  try {
-    youtubePlayer?.pauseVideo?.();
-  } catch (_) {}
+  youtubePlayer?.pauseVideo?.();
 }
 
 function mostrarProgramacionFinalizada() {
@@ -315,10 +301,7 @@ function mostrarProgramacionFinalizada() {
   ui.playerCaption.textContent = 'La playlist llegó al final.';
   ui.playerAction.hidden = false;
   ocultarInvitacionSonido();
-
-  try {
-    youtubePlayer?.pauseVideo?.();
-  } catch (_) {}
+  youtubePlayer?.pauseVideo?.();
 }
 
 function cargarYoutube(elemento, segundoInicio = 0) {
@@ -333,6 +316,7 @@ function cargarYoutube(elemento, segundoInicio = 0) {
   ui.fallback.hidden = true;
 
   if (!youtubePlayer) {
+    youtubePlayerListo = false;
     youtubePlayer = new YT.Player('youtubePlayer', {
       videoId,
       width: '100%',
@@ -347,9 +331,10 @@ function cargarYoutube(elemento, segundoInicio = 0) {
       },
       events: {
         onReady: (event) => {
-          event.target.mute();
-          if (segundoInicio > 0) event.target.seekTo(segundoInicio, true);
-          event.target.playVideo();
+          youtubePlayerListo = true;
+          event.target.mute?.();
+          if (segundoInicio > 0) event.target.seekTo?.(segundoInicio, true);
+          event.target.playVideo?.();
           mostrarInvitacionSonido();
         },
         onStateChange: (event) => {
@@ -370,15 +355,22 @@ function cargarYoutube(elemento, segundoInicio = 0) {
         onError: () => sincronizarCanal({ forzarCarga: true })
       }
     });
-  } else {
-    if (!sonidoActivado) youtubePlayer.mute();
-    youtubePlayer.loadVideoById({
-      videoId,
-      startSeconds: Math.max(0, segundoInicio)
-    });
-    if (sonidoActivado) youtubePlayer.unMute();
-    mostrarInvitacionSonido();
+    return;
   }
+
+  if (!youtubePlayerListo) {
+    reproduccionSolicitada = true;
+    ui.playerCaption.textContent = 'Preparando YouTube…';
+    return;
+  }
+
+  if (!sonidoActivado) youtubePlayer.mute?.();
+  youtubePlayer.loadVideoById?.({
+    videoId,
+    startSeconds: Math.max(0, segundoInicio)
+  });
+  if (sonidoActivado) youtubePlayer.unMute?.();
+  mostrarInvitacionSonido();
 }
 
 function sincronizarCanal({ forzarCarga = false } = {}) {
@@ -422,22 +414,23 @@ function sincronizarCanal({ forzarCarga = false } = {}) {
       return;
     }
 
+    if (!youtubePlayerListo) return;
+
     const tiempoReproductor = Number(youtubePlayer.getCurrentTime?.());
     const desfase = Number.isFinite(tiempoReproductor)
       ? Math.abs(tiempoReproductor - segundoActual)
       : Infinity;
 
     if (desfase > TOLERANCIA_DESFASE_SEGUNDOS) {
-      youtubePlayer.seekTo(segundoActual, true);
+      youtubePlayer.seekTo?.(segundoActual, true);
     }
 
     const estadoReproductor = youtubePlayer.getPlayerState?.();
-
     if (
       estadoReproductor !== YT.PlayerState.PLAYING &&
       estadoReproductor !== YT.PlayerState.BUFFERING
     ) {
-      youtubePlayer.playVideo();
+      youtubePlayer.playVideo?.();
     }
   } catch (error) {
     console.error('No fue posible sincronizar el canal:', error);
@@ -469,8 +462,7 @@ async function iniciarReproduccion() {
     ui.playerCaption.textContent = 'Consultando programación…';
     ui.playerAction.hidden = true;
 
-    const datos = await consultarTransmision();
-    aplicarConfiguracion(datos);
+    aplicarConfiguracion(await consultarTransmision());
     sincronizarCanal({ forzarCarga: true });
     iniciarMonitorSincronizacion();
   } catch (error) {
@@ -480,12 +472,12 @@ async function iniciarReproduccion() {
 }
 
 ui.soundInvitation?.addEventListener('click', () => {
-  if (!youtubePlayer) return;
+  if (!youtubePlayerListo || !youtubePlayer) return;
 
   try {
-    youtubePlayer.unMute();
-    youtubePlayer.setVolume(100);
-    youtubePlayer.playVideo();
+    youtubePlayer.unMute?.();
+    youtubePlayer.setVolume?.(100);
+    youtubePlayer.playVideo?.();
     sonidoActivado = true;
     ocultarInvitacionSonido();
   } catch (error) {
@@ -494,7 +486,7 @@ ui.soundInvitation?.addEventListener('click', () => {
 });
 
 ui.playerAction?.addEventListener('click', () => {
-  if (youtubePlayer?.playVideo) {
+  if (youtubePlayerListo && youtubePlayer?.playVideo) {
     sincronizarCanal({ forzarCarga: true });
     ui.fallback.hidden = true;
     mostrarInvitacionSonido();
@@ -508,10 +500,8 @@ document.addEventListener('visibilitychange', async () => {
 
   try {
     await actualizarConfiguracionRemota();
-    sincronizarCanal({ forzarCarga: true });
-  } catch (_) {
-    sincronizarCanal({ forzarCarga: true });
-  }
+  } catch (_) {}
+  sincronizarCanal({ forzarCarga: true });
 });
 
 window.addEventListener('pageshow', async () => {
