@@ -3,11 +3,25 @@
   "short_name": "QRO TV",
   "description": "Transmisión, producciones, clips y revista digital de Querétaro.",
   "lang": "es-MX",
+  "id": "./",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "background_color": "#f4f4f4",
   "theme_color": "#111111",
   "orientation": "any",
-  "icons": []
+  "icons": [
+    {
+      "src": "./assets/icon-qro-tv.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "./assets/icon-qro-tv-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
 }
