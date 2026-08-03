@@ -6,13 +6,21 @@ const API_ENDPOINTS = [
   'https://scad.mx/_functions/qtdTransmision'
 ];
 
+const EPOCA_CANAL_UTC = Date.parse('2026-01-01T00:00:00.000Z');
+const INTERVALO_REVISION_MS = 10000;
+const TOLERANCIA_DESFASE_SEGUNDOS = 3;
+
 let configuracion = null;
 let elementos = [];
 let indiceActual = 0;
+let segundoActual = 0;
 let youtubePlayer = null;
 let youtubeApiLista = false;
 let reproduccionSolicitada = false;
 let sonidoActivado = false;
+let desfaseRelojServidorMs = 0;
+let temporizadorSincronizacion = null;
+let sincronizando = false;
 
 const ui = {
   status: document.getElementById('broadcastStatus'),
@@ -42,7 +50,7 @@ navigation?.addEventListener('click', (event) => {
 
 window.onYouTubeIframeAPIReady = () => {
   youtubeApiLista = true;
-  if (reproduccionSolicitada) iniciarReproduccion();
+  if (reproduccionSolicitada) sincronizarCanal({ forzarCarga: true });
 };
 
 function extraerYoutubeId(referencia = '') {
@@ -64,15 +72,63 @@ function extraerYoutubeId(referencia = '') {
   return '';
 }
 
+function duracionElemento(elemento) {
+  const duracion = Number(elemento?.duracionSegundos);
+  return Number.isFinite(duracion) && duracion > 0 ? Math.floor(duracion) : 0;
+}
+
+function ahoraCanalMs() {
+  return Date.now() + desfaseRelojServidorMs;
+}
+
+function calcularPosicionCanal() {
+  const duraciones = elementos.map(duracionElemento);
+  const duracionTotal = duraciones.reduce((total, duracion) => total + duracion, 0);
+
+  if (!duracionTotal || duraciones.some((duracion) => duracion <= 0)) {
+    throw new Error('Todos los videos activos deben tener una duración válida para sincronizar la señal.');
+  }
+
+  const transcurridoTotal = Math.max(0, Math.floor((ahoraCanalMs() - EPOCA_CANAL_UTC) / 1000));
+  const repetir = configuracion?.playlist?.repetir !== false;
+
+  if (!repetir && transcurridoTotal >= duracionTotal) {
+    return { finalizada: true, indice: elementos.length - 1, segundo: duraciones.at(-1), duracionTotal };
+  }
+
+  let posicionCiclo = repetir ? transcurridoTotal % duracionTotal : transcurridoTotal;
+
+  for (let indice = 0; indice < duraciones.length; indice += 1) {
+    if (posicionCiclo < duraciones[indice]) {
+      return {
+        finalizada: false,
+        indice,
+        segundo: posicionCiclo,
+        duracionTotal
+      };
+    }
+    posicionCiclo -= duraciones[indice];
+  }
+
+  return { finalizada: false, indice: 0, segundo: 0, duracionTotal };
+}
+
 async function consultarTransmision() {
   let ultimoError = null;
   for (const endpoint of API_ENDPOINTS) {
     try {
-      const respuesta = await fetch(`${endpoint}?t=${Date.now()}`, {
+      const inicioSolicitud = Date.now();
+      const respuesta = await fetch(`${endpoint}?t=${inicioSolicitud}`, {
         method: 'GET',
         cache: 'no-store',
         headers: { Accept: 'application/json' }
       });
+      const finSolicitud = Date.now();
+      const fechaServidor = Date.parse(respuesta.headers.get('date') || '');
+      if (Number.isFinite(fechaServidor)) {
+        const puntoMedioCliente = inicioSolicitud + ((finSolicitud - inicioSolicitud) / 2);
+        desfaseRelojServidorMs = fechaServidor - puntoMedioCliente;
+      }
       const datos = await respuesta.json().catch(() => ({}));
       if (!respuesta.ok || !datos.ok) {
         throw new Error(datos.mensaje || `Respuesta HTTP ${respuesta.status}`);
@@ -118,9 +174,18 @@ function ocultarInvitacionSonido() {
   if (ui.soundInvitation) ui.soundInvitation.hidden = true;
 }
 
-function reproducirYoutube(elemento) {
+function mostrarProgramacionFinalizada() {
+  ui.fallback.hidden = false;
+  ui.playerStatus.textContent = 'PROGRAMACIÓN FINALIZADA';
+  ui.playerCaption.textContent = 'La playlist llegó al final.';
+  ui.playerAction.hidden = false;
+  ocultarInvitacionSonido();
+  try { youtubePlayer?.pauseVideo?.(); } catch (_) {}
+}
+
+function cargarYoutube(elemento, segundoInicio = 0) {
   const videoId = extraerYoutubeId(elemento?.referenciaVideo);
-  if (!videoId) return avanzar();
+  if (!videoId) return sincronizarCanal({ forzarCarga: true });
 
   actualizarInformacion();
   ui.fallback.hidden = true;
@@ -133,6 +198,7 @@ function reproducirYoutube(elemento) {
       playerVars: {
         autoplay: 1,
         mute: 1,
+        start: Math.floor(segundoInicio),
         playsinline: 1,
         rel: 0,
         modestbranding: 1
@@ -140,14 +206,13 @@ function reproducirYoutube(elemento) {
       events: {
         onReady: (event) => {
           event.target.mute();
+          if (segundoInicio > 0) event.target.seekTo(segundoInicio, true);
           event.target.playVideo();
           mostrarInvitacionSonido();
         },
         onStateChange: (event) => {
-          if (event.data === YT.PlayerState.PLAYING && !sonidoActivado) {
-            mostrarInvitacionSonido();
-          }
-          if (event.data === YT.PlayerState.ENDED) avanzar();
+          if (event.data === YT.PlayerState.PLAYING && !sonidoActivado) mostrarInvitacionSonido();
+          if (event.data === YT.PlayerState.ENDED) sincronizarCanal({ forzarCarga: true });
         },
         onAutoplayBlocked: () => {
           ui.fallback.hidden = false;
@@ -156,49 +221,77 @@ function reproducirYoutube(elemento) {
           ui.playerAction.textContent = '▶';
           ui.playerAction.hidden = false;
         },
-        onError: () => avanzar()
+        onError: () => sincronizarCanal({ forzarCarga: true })
       }
     });
   } else {
-    youtubePlayer.mute();
-    youtubePlayer.loadVideoById(videoId);
+    if (!sonidoActivado) youtubePlayer.mute();
+    youtubePlayer.loadVideoById({ videoId, startSeconds: Math.max(0, segundoInicio) });
+    if (sonidoActivado) youtubePlayer.unMute();
     mostrarInvitacionSonido();
   }
 }
 
-function avanzar() {
-  if (!elementos.length) return;
-  if (indiceActual < elementos.length - 1) {
-    indiceActual += 1;
-    reproducirActual();
-    return;
-  }
-  if (configuracion?.playlist?.repetir !== false) {
-    indiceActual = 0;
-    reproducirActual();
-    return;
-  }
-  ui.fallback.hidden = false;
-  ui.playerStatus.textContent = 'PROGRAMACIÓN FINALIZADA';
-  ui.playerCaption.textContent = 'La playlist llegó al final.';
-  ui.playerAction.hidden = false;
-  ocultarInvitacionSonido();
-}
+function sincronizarCanal({ forzarCarga = false } = {}) {
+  if (sincronizando || !elementos.length) return;
+  sincronizando = true;
 
-function reproducirActual() {
-  const elemento = elementos[indiceActual];
-  if (!elemento) return mostrarError('La playlist no contiene elementos reproducibles.');
-  if (elemento.tipoFuente === 'YOUTUBE') {
+  try {
+    const posicion = calcularPosicionCanal();
+    if (posicion.finalizada) {
+      mostrarProgramacionFinalizada();
+      return;
+    }
+
+    const cambioElemento = posicion.indice !== indiceActual;
+    indiceActual = posicion.indice;
+    segundoActual = posicion.segundo;
+    actualizarInformacion();
+
     if (!youtubeApiLista || !window.YT?.Player) {
       reproduccionSolicitada = true;
       ui.playerCaption.textContent = 'Preparando YouTube…';
       return;
     }
+
     reproduccionSolicitada = false;
-    reproducirYoutube(elemento);
-    return;
+    const elemento = elementos[indiceActual];
+    if (elemento?.tipoFuente !== 'YOUTUBE') {
+      mostrarError(`El origen ${elemento?.tipoFuente || 'desconocido'} todavía no está habilitado.`);
+      return;
+    }
+
+    if (!youtubePlayer || cambioElemento || forzarCarga) {
+      cargarYoutube(elemento, segundoActual);
+      return;
+    }
+
+    const tiempoReproductor = Number(youtubePlayer.getCurrentTime?.());
+    const desfase = Number.isFinite(tiempoReproductor)
+      ? Math.abs(tiempoReproductor - segundoActual)
+      : Infinity;
+
+    if (desfase > TOLERANCIA_DESFASE_SEGUNDOS) {
+      youtubePlayer.seekTo(segundoActual, true);
+    }
+
+    const estado = youtubePlayer.getPlayerState?.();
+    if (estado !== YT.PlayerState.PLAYING && estado !== YT.PlayerState.BUFFERING) {
+      youtubePlayer.playVideo();
+    }
+  } catch (error) {
+    console.error('No fue posible sincronizar el canal:', error);
+    mostrarError(error?.message || 'No fue posible sincronizar la señal.');
+  } finally {
+    sincronizando = false;
   }
-  mostrarError(`El origen ${elemento.tipoFuente || 'desconocido'} todavía no está habilitado.`);
+}
+
+function iniciarMonitorSincronizacion() {
+  clearInterval(temporizadorSincronizacion);
+  temporizadorSincronizacion = setInterval(() => {
+    if (!document.hidden) sincronizarCanal();
+  }, INTERVALO_REVISION_MS);
 }
 
 async function iniciarReproduccion() {
@@ -217,8 +310,8 @@ async function iniciarReproduccion() {
     if (!configuracion.playlist || !elementos.length) {
       return mostrarError('La transmisión activa no contiene videos disponibles.');
     }
-    indiceActual = 0;
-    reproducirActual();
+    sincronizarCanal({ forzarCarga: true });
+    iniciarMonitorSincronizacion();
   } catch (error) {
     console.error('No fue posible iniciar la transmisión:', error);
     mostrarError(error?.message || 'No fue posible conectar con la señal.');
@@ -240,7 +333,7 @@ ui.soundInvitation?.addEventListener('click', () => {
 
 ui.playerAction?.addEventListener('click', () => {
   if (youtubePlayer?.playVideo) {
-    youtubePlayer.playVideo();
+    sincronizarCanal({ forzarCarga: true });
     ui.fallback.hidden = true;
     mostrarInvitacionSonido();
   } else {
@@ -249,8 +342,11 @@ ui.playerAction?.addEventListener('click', () => {
 });
 
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden && youtubePlayer?.playVideo) youtubePlayer.playVideo();
+  if (!document.hidden) sincronizarCanal({ forzarCarga: true });
 });
+
+window.addEventListener('pageshow', () => sincronizarCanal({ forzarCarga: true }));
+window.addEventListener('online', () => iniciarReproduccion());
 
 iniciarReproduccion();
 
