@@ -175,7 +175,7 @@ async function iniciarReproduccion() {
     reproducirActual();
   } catch (error) {
     console.error('No fue posible iniciar la transmisión:', error);
-    mostrarError(error?.message || 'No fue posible cargar la transmisión.');
+    mostrarError('No fue posible conectar con la señal. Verifica que el endpoint público de Wix esté publicado.');
   }
 }
 
@@ -209,7 +209,7 @@ function abrirModalInstalacion() {
   } else {
     iosInstallSteps.hidden = true;
     installModalAction.textContent = deferredInstallPrompt ? 'Instalar' : 'Cerrar';
-    installModalText.textContent = deferredInstallPrompt ? 'Instala QRO TV DIGITAL para abrirla desde tu pantalla de inicio.' : 'La opción de instalación aparecerá cuando el navegador la tenga disponible.';
+    installModalText.textContent = deferredInstallPrompt ? 'Instala QRO TV DIGITAL para abrirla desde tu pantalla de inicio.' : 'Abre el menú del navegador y elige Instalar aplicación o Agregar a pantalla de inicio. En Chrome también puede aparecer el icono de instalación en la barra de direcciones.';
   }
   installModal.hidden = false;
   document.body.classList.add('modal-abierto');
@@ -223,17 +223,14 @@ function cerrarModalInstalacion() {
 
 function actualizarBotonInstalacion() {
   if (!installButton) return;
+  installButton.hidden = false;
   if (esStandalone) {
-    installButton.hidden = false;
     installButton.disabled = true;
-    installButton.textContent = '✓ App instalada';
+    installButton.textContent = '✓ Instalada';
     return;
   }
-  if (deferredInstallPrompt || esIOS) {
-    installButton.hidden = false;
-    installButton.disabled = false;
-    installButton.textContent = '⬇ Instalar app';
-  }
+  installButton.disabled = false;
+  installButton.innerHTML = '<span aria-hidden="true">＋</span> Instalar';
 }
 
 window.addEventListener('beforeinstallprompt', (event) => {
@@ -247,7 +244,7 @@ window.addEventListener('appinstalled', () => {
   if (installButton) {
     installButton.hidden = false;
     installButton.disabled = true;
-    installButton.textContent = '✓ App instalada';
+    installButton.textContent = '✓ Instalada';
   }
   cerrarModalInstalacion();
 });
