@@ -13,6 +13,42 @@
   <link rel="preload" href="./assets/logo-qro-tv-digital.webp" as="image" type="image/webp" fetchpriority="high">
   <link rel="stylesheet" href="./src/styles.css">
   <link rel="stylesheet" href="./src/player.css">
+  <style>
+    .live-badge {
+      position: absolute;
+      z-index: 8;
+      top: 14px;
+      left: 14px;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 10px;
+      color: #fff;
+      background: rgba(166, 23, 17, .94);
+      border: 1px solid rgba(255,255,255,.18);
+      border-radius: 7px;
+      box-shadow: 0 8px 22px rgba(0,0,0,.24);
+      backdrop-filter: blur(8px);
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: .11em;
+      pointer-events: none;
+    }
+    .live-badge[hidden] { display: none !important; }
+    .live-badge-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 0 0 0 rgba(255,255,255,.45);
+      animation: livePulse 1.8s ease-out infinite;
+    }
+    @keyframes livePulse {
+      0% { box-shadow: 0 0 0 0 rgba(255,255,255,.48); }
+      70% { box-shadow: 0 0 0 7px rgba(255,255,255,0); }
+      100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); }
+    }
+  </style>
   <title>QRO TV DIGITAL</title>
 </head>
 <body>
@@ -31,6 +67,10 @@
         <div class="now-playing"><span>AHORA</span><strong id="nowTitle">Preparando señal…</strong><small id="nextTitle">Espera un momento.</small></div>
       </div>
       <div id="playerShell" class="player-shell" aria-live="polite">
+        <div id="liveBadge" class="live-badge" hidden aria-label="Transmisión identificada como en vivo">
+          <span class="live-badge-dot" aria-hidden="true"></span>
+          EN VIVO
+        </div>
         <div id="youtubePlayer" class="player-frame"></div>
         <button id="soundInvitation" class="sound-invitation" type="button" hidden aria-label="Activar sonido">
           <span class="sound-icon" aria-hidden="true">🔇</span>
@@ -47,7 +87,7 @@
     <section class="clips-section" id="clips"><header class="section-heading light"><div><p class="eyebrow">FORMATO BREVE</p><h2>Clips</h2></div><a href="#clips">Ver todos <span>→</span></a></header><div class="clip-row"><article class="clip"><div class="clip-image clip-one"><span>▶</span><small>01:24</small></div><h3>Una idea en un minuto</h3><p>Lo esencial, sin rodeos.</p></article><article class="clip"><div class="clip-image clip-two"><span>▶</span><small>02:10</small></div><h3>La frase del día</h3><p>Una voz que vale la pena escuchar.</p></article><article class="clip"><div class="clip-image clip-three"><span>▶</span><small>00:48</small></div><h3>Así se vivió</h3><p>Momentos de nuestra ciudad.</p></article><article class="clip"><div class="clip-image clip-four"><span>▶</span><small>01:36</small></div><h3>Detrás de cámara</h3><p>El otro lado de la producción.</p></article></div></section>
     <section class="magazine" id="revista"><header class="section-heading"><div><p class="eyebrow">LECTURA + IMAGEN</p><h2>Revista</h2></div><a href="#revista">Explorar revista <span>→</span></a></header><article class="magazine-feature"><div class="magazine-image"><span>REPORTAJE</span></div><div class="magazine-copy"><p class="kicker">CIUDAD · 8 MIN DE LECTURA</p><h3>Querétaro también se cuenta desde sus calles</h3><p>Una mirada visual a los espacios, las personas y las ideas que transforman la vida cotidiana.</p><a href="#revista">Leer artículo <span>→</span></a></div></article></section>
   </main>
-  <footer><img src="./assets/logo-qro-tv-digital.webp" alt="QRO TV DIGITAL" width="360" height="182" loading="lazy"><p>Transmisión · Producciones · Clips · Revista</p><small class="app-version">Versión 1.6.0</small></footer>
+  <footer><img src="./assets/logo-qro-tv-digital.webp" alt="QRO TV DIGITAL" width="360" height="182" loading="lazy"><p>Transmisión · Producciones · Clips · Revista</p><small class="app-version">Versión 1.7.0</small></footer>
   <div id="installModal" class="install-modal" hidden><div class="install-modal-card" role="dialog" aria-modal="true" aria-labelledby="installModalTitle"><button id="closeInstallModal" class="install-modal-close" type="button" aria-label="Cerrar">×</button><div class="install-modal-icon">📲</div><h2 id="installModalTitle">Instalar QRO TV DIGITAL</h2><p id="installModalText">Agrega la app a tu pantalla de inicio para abrirla como una aplicación.</p><div id="iosInstallSteps" class="ios-install-steps" hidden><p><strong>En iPhone o iPad:</strong></p><ol><li>Abre esta página en Safari.</li><li>Toca el botón <strong>Compartir</strong> ⎋.</li><li>Selecciona <strong>Agregar a pantalla de inicio</strong>.</li><li>Confirma con <strong>Agregar</strong>.</li></ol></div><button id="installModalAction" class="install-modal-action" type="button">Instalar</button></div></div>
   <script src="https://www.youtube.com/iframe_api"></script><script src="./src/app.js" defer></script>
 </body>
