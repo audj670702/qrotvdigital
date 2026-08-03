@@ -1,9 +1,11 @@
-const CACHE_NAME = "qro-tv-digital-v1.1.0";
+const CACHE_NAME = "qro-tv-digital-v1.2.0";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./manifest.webmanifest",
   "./assets/logo-qro-tv-digital.webp",
+  "./assets/icon-qro-tv.svg",
+  "./assets/icon-qro-tv-maskable.svg",
   "./src/styles.css",
   "./src/player.css",
   "./src/app.js"
@@ -24,7 +26,6 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
-
   const url = new URL(event.request.url);
 
   if (url.pathname.includes("/_functions/") || url.hostname.includes("youtube.com")) {
