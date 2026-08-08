@@ -88,12 +88,13 @@ let reintento = null;
 let intentoReconectar = 0;
 let ultimaReproduccion = 0;
 let inicializando = false;
+let usuarioInteractuo = false;
 
 const MAX_REINTENTOS = 6;
 const TIEMPO_ESTABLE = 5000;
 
 function urlHlsNueva() {
-  return `${CANAL_HLS_URL}?app=${Date.now()}`;
+  return `${CANAL_HLS_URL}?t=${Date.now()}`;
 }
 
 function actualizarEstadoDisponible() {
@@ -107,6 +108,17 @@ function actualizarEstadoDisponible() {
   if (nowTitle) nowTitle.textContent = 'QRO TV DIGITAL';
   if (nextTitle) nextTitle.textContent = 'Señal procesada por el motor de continuidad.';
   if (fallback) fallback.hidden = true;
+}
+
+function mostrarAccionReproduccion(mensaje = 'Toca para reproducir la señal.') {
+  if (!fallback) return;
+  fallback.hidden = false;
+  if (playerStatus) playerStatus.textContent = 'TOCA PARA REPRODUCIR';
+  if (playerCaption) playerCaption.textContent = mensaje;
+  if (playerAction) {
+    playerAction.textContent = '▶';
+    playerAction.hidden = false;
+  }
 }
 
 function actualizarEstadoCarga(mensaje = 'Conectando con la señal del canal…') {
@@ -146,20 +158,18 @@ function limpiarReproductorHls() {
 }
 
 async function intentarPlay() {
-  if (!player) return;
+  if (!player) return false;
 
   try {
+    player.muted = true;
+    player.defaultMuted = true;
     await player.play();
+    return true;
   } catch (_) {
     if (!ES_MONITOR) {
-      if (fallback) fallback.hidden = false;
-      if (playerStatus) playerStatus.textContent = 'TOCA PARA REPRODUCIR';
-      if (playerCaption) playerCaption.textContent = 'El navegador bloqueó la reproducción automática.';
-      if (playerAction) {
-        playerAction.textContent = '▶';
-        playerAction.hidden = false;
-      }
+      mostrarAccionReproduccion('El navegador móvil requiere tocar reproducir.');
     }
+    return false;
   }
 }
 
@@ -177,6 +187,21 @@ function programarReconexion(motivo = 'Reconectando con la señal…') {
   }, espera);
 }
 
+function prepararVideo() {
+  if (!player) return;
+
+  player.autoplay = true;
+  player.preload = 'auto';
+  player.playsInline = true;
+  player.muted = true;
+  player.defaultMuted = true;
+  player.controls = !ES_MONITOR;
+  player.setAttribute('autoplay', '');
+  player.setAttribute('muted', '');
+  player.setAttribute('playsinline', '');
+  player.setAttribute('webkit-playsinline', '');
+}
+
 function iniciarCanal({ reinicio = false } = {}) {
   if (!player || inicializando) return;
 
@@ -185,11 +210,7 @@ function iniciarCanal({ reinicio = false } = {}) {
   try {
     limpiarReproductorHls();
     actualizarEstadoCarga(reinicio ? 'Restableciendo la señal…' : 'Conectando con la señal del canal…');
-
-    player.autoplay = true;
-    player.playsInline = true;
-    player.muted = true;
-    player.controls = !ES_MONITOR;
+    prepararVideo();
 
     if (reinicio) {
       player.pause();
@@ -201,7 +222,14 @@ function iniciarCanal({ reinicio = false } = {}) {
 
     if (player.canPlayType('application/vnd.apple.mpegurl')) {
       player.src = fuente;
-      player.addEventListener('loadedmetadata', intentarPlay, { once: true });
+      player.load();
+
+      const reproducirCuandoListo = () => {
+        intentarPlay();
+      };
+
+      player.addEventListener('loadedmetadata', reproducirCuandoListo, { once: true });
+      player.addEventListener('canplay', reproducirCuandoListo, { once: true });
       return;
     }
 
@@ -232,7 +260,7 @@ function iniciarCanal({ reinicio = false } = {}) {
       });
 
       hls.on(window.Hls.Events.FRAG_LOADED, () => {
-        if (player.paused && document.visibilityState === 'visible') {
+        if (player.paused && document.visibilityState === 'visible' && usuarioInteractuo) {
           intentarPlay();
         }
       });
@@ -298,7 +326,18 @@ player?.addEventListener('error', () => {
   programarReconexion('Restableciendo la señal…');
 });
 
+player?.addEventListener('pointerdown', () => {
+  usuarioInteractuo = true;
+});
+
+player?.addEventListener('click', () => {
+  usuarioInteractuo = true;
+  intentarPlay();
+});
+
 playerAction?.addEventListener('click', () => {
+  usuarioInteractuo = true;
+
   if (player?.src || hls) {
     intentarPlay();
     return;
@@ -317,13 +356,20 @@ document.addEventListener('visibilitychange', () => {
   }
 
   if (player?.paused || player?.readyState < 2) {
-    intentarPlay();
+    if (usuarioInteractuo) {
+      intentarPlay();
+    } else {
+      mostrarAccionReproduccion('Toca para continuar la transmisión.');
+    }
   }
 });
 
 window.addEventListener('online', () => iniciarCanal({ reinicio: true }));
 window.addEventListener('pageshow', () => {
-  if (player?.paused) intentarPlay();
+  if (player?.paused) {
+    if (usuarioInteractuo) intentarPlay();
+    else mostrarAccionReproduccion('Toca para reproducir la transmisión.');
+  }
 });
 
 iniciarCanal();
