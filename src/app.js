@@ -85,8 +85,21 @@ const nextTitle = document.getElementById('nextTitle');
 
 let hls = null;
 let reintento = null;
+let intentoReconectar = 0;
+let ultimaReproduccion = 0;
+let inicializando = false;
+
+const MAX_REINTENTOS = 6;
+const TIEMPO_ESTABLE = 5000;
+
+function urlHlsNueva() {
+  return `${CANAL_HLS_URL}?app=${Date.now()}`;
+}
 
 function actualizarEstadoDisponible() {
+  intentoReconectar = 0;
+  ultimaReproduccion = Date.now();
+
   if (broadcastStatus) broadcastStatus.textContent = 'TRANSMISIÓN CONTINUA';
   if (broadcastDescription) {
     broadcastDescription.textContent = 'Señal permanente de QRO TV DIGITAL.';
@@ -96,11 +109,11 @@ function actualizarEstadoDisponible() {
   if (fallback) fallback.hidden = true;
 }
 
-function actualizarEstadoCarga() {
+function actualizarEstadoCarga(mensaje = 'Conectando con la señal del canal…') {
   if (!fallback) return;
   fallback.hidden = false;
   if (playerStatus) playerStatus.textContent = 'CARGANDO';
-  if (playerCaption) playerCaption.textContent = 'Conectando con la señal del canal…';
+  if (playerCaption) playerCaption.textContent = mensaje;
   if (playerAction) playerAction.hidden = true;
 }
 
@@ -108,7 +121,7 @@ function actualizarEstadoError(mensaje = 'No fue posible conectar con la señal 
   if (broadcastStatus) broadcastStatus.textContent = 'SEÑAL NO DISPONIBLE';
   if (broadcastDescription) broadcastDescription.textContent = mensaje;
   if (nowTitle) nowTitle.textContent = 'Sin transmisión';
-  if (nextTitle) nextTitle.textContent = 'Intenta nuevamente en unos momentos.';
+  if (nextTitle) nextTitle.textContent = 'Reconectando automáticamente.';
 
   if (fallback) fallback.hidden = false;
   if (playerStatus) playerStatus.textContent = 'SIN SEÑAL';
@@ -125,6 +138,7 @@ function limpiarReproductorHls() {
 
   if (hls) {
     try {
+      hls.stopLoad();
       hls.destroy();
     } catch (_) {}
     hls = null;
@@ -149,96 +163,139 @@ async function intentarPlay() {
   }
 }
 
-function programarReconexion() {
-  clearTimeout(reintento);
-  reintento = setTimeout(() => iniciarCanal({ reinicio: true }), 3000);
+function programarReconexion(motivo = 'Reconectando con la señal…') {
+  if (reintento || inicializando) return;
+
+  intentoReconectar = Math.min(intentoReconectar + 1, MAX_REINTENTOS);
+  const espera = Math.min(1500 * Math.pow(1.5, intentoReconectar - 1), 8000);
+
+  actualizarEstadoCarga(motivo);
+
+  reintento = setTimeout(() => {
+    reintento = null;
+    iniciarCanal({ reinicio: true });
+  }, espera);
 }
 
 function iniciarCanal({ reinicio = false } = {}) {
-  if (!player) return;
+  if (!player || inicializando) return;
 
-  limpiarReproductorHls();
-  actualizarEstadoCarga();
+  inicializando = true;
 
-  player.autoplay = true;
-  player.playsInline = true;
-  player.muted = true;
-  player.controls = !ES_MONITOR;
+  try {
+    limpiarReproductorHls();
+    actualizarEstadoCarga(reinicio ? 'Restableciendo la señal…' : 'Conectando con la señal del canal…');
 
-  if (reinicio) {
-    player.removeAttribute('src');
-    player.load();
-  }
+    player.autoplay = true;
+    player.playsInline = true;
+    player.muted = true;
+    player.controls = !ES_MONITOR;
 
-  if (player.canPlayType('application/vnd.apple.mpegurl')) {
-    player.src = `${CANAL_HLS_URL}?t=${Date.now()}`;
-    player.addEventListener('loadedmetadata', intentarPlay, { once: true });
-    return;
-  }
+    if (reinicio) {
+      player.pause();
+      player.removeAttribute('src');
+      player.load();
+    }
 
-  if (window.Hls?.isSupported()) {
-    hls = new window.Hls({
-      enableWorker: true,
-      lowLatencyMode: true,
-      backBufferLength: 30,
-      liveSyncDurationCount: 3,
-      liveMaxLatencyDurationCount: 8
-    });
+    const fuente = urlHlsNueva();
 
-    hls.loadSource(CANAL_HLS_URL);
-    hls.attachMedia(player);
+    if (player.canPlayType('application/vnd.apple.mpegurl')) {
+      player.src = fuente;
+      player.addEventListener('loadedmetadata', intentarPlay, { once: true });
+      return;
+    }
 
-    hls.on(window.Hls.Events.MANIFEST_PARSED, () => {
-      intentarPlay();
-    });
+    if (window.Hls?.isSupported()) {
+      hls = new window.Hls({
+        enableWorker: true,
+        lowLatencyMode: false,
+        backBufferLength: 30,
+        liveSyncDurationCount: 3,
+        liveMaxLatencyDurationCount: 8,
+        maxLiveSyncPlaybackRate: 1.15,
+        manifestLoadingMaxRetry: 6,
+        manifestLoadingRetryDelay: 1000,
+        manifestLoadingMaxRetryTimeout: 8000,
+        levelLoadingMaxRetry: 6,
+        levelLoadingRetryDelay: 1000,
+        levelLoadingMaxRetryTimeout: 8000,
+        fragLoadingMaxRetry: 6,
+        fragLoadingRetryDelay: 1000,
+        fragLoadingMaxRetryTimeout: 8000
+      });
 
-    hls.on(window.Hls.Events.ERROR, (_event, data) => {
-      if (!data?.fatal) return;
+      hls.loadSource(fuente);
+      hls.attachMedia(player);
 
-      console.error('Error fatal HLS:', data);
+      hls.on(window.Hls.Events.MANIFEST_PARSED, () => {
+        intentarPlay();
+      });
 
-      if (data.type === window.Hls.ErrorTypes.NETWORK_ERROR) {
-        actualizarEstadoError('La señal del VPS no respondió. Reconectando…');
-        programarReconexion();
-        return;
-      }
+      hls.on(window.Hls.Events.FRAG_LOADED, () => {
+        if (player.paused && document.visibilityState === 'visible') {
+          intentarPlay();
+        }
+      });
 
-      if (data.type === window.Hls.ErrorTypes.MEDIA_ERROR) {
-        try {
-          hls.recoverMediaError();
+      hls.on(window.Hls.Events.ERROR, (_event, data) => {
+        if (!data) return;
+
+        console.warn('HLS:', data.type, data.details, data.fatal);
+
+        if (!data.fatal) return;
+
+        if (data.type === window.Hls.ErrorTypes.NETWORK_ERROR) {
+          try {
+            hls.startLoad();
+          } catch (_) {}
+          programarReconexion('Restableciendo conexión con la señal…');
           return;
-        } catch (_) {}
-      }
+        }
 
-      actualizarEstadoError();
-      programarReconexion();
-    });
+        if (data.type === window.Hls.ErrorTypes.MEDIA_ERROR) {
+          try {
+            hls.recoverMediaError();
+            return;
+          } catch (_) {}
+        }
 
-    return;
+        programarReconexion('Restableciendo el reproductor…');
+      });
+
+      return;
+    }
+
+    actualizarEstadoError('Este navegador no dispone de reproducción HLS compatible.');
+  } finally {
+    inicializando = false;
   }
-
-  actualizarEstadoError('Este navegador no dispone de reproducción HLS compatible.');
 }
+
+player?.addEventListener('loadeddata', () => {
+  if (player.paused && document.visibilityState === 'visible') {
+    intentarPlay();
+  }
+});
 
 player?.addEventListener('playing', () => {
   actualizarEstadoDisponible();
 });
 
 player?.addEventListener('waiting', () => {
-  if (playerCaption && !fallback?.hidden) {
-    playerCaption.textContent = 'Recibiendo señal…';
-  }
+  if (ultimaReproduccion && Date.now() - ultimaReproduccion < TIEMPO_ESTABLE) return;
+
+  if (broadcastStatus) broadcastStatus.textContent = 'TRANSMISIÓN CONTINUA';
+  if (broadcastDescription) broadcastDescription.textContent = 'Recibiendo señal del canal…';
 });
 
 player?.addEventListener('stalled', () => {
-  programarReconexion();
+  if (!ultimaReproduccion || Date.now() - ultimaReproduccion >= TIEMPO_ESTABLE) {
+    programarReconexion('Señal detenida. Restableciendo conexión…');
+  }
 });
 
 player?.addEventListener('error', () => {
-  if (!window.Hls?.isSupported()) {
-    actualizarEstadoError();
-    programarReconexion();
-  }
+  programarReconexion('Restableciendo la señal…');
 });
 
 playerAction?.addEventListener('click', () => {
@@ -251,12 +308,23 @@ playerAction?.addEventListener('click', () => {
 });
 
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden && player?.paused) {
+  if (document.visibilityState !== 'visible') return;
+
+  if (hls) {
+    try {
+      hls.startLoad();
+    } catch (_) {}
+  }
+
+  if (player?.paused || player?.readyState < 2) {
     intentarPlay();
   }
 });
 
 window.addEventListener('online', () => iniciarCanal({ reinicio: true }));
+window.addEventListener('pageshow', () => {
+  if (player?.paused) intentarPlay();
+});
 
 iniciarCanal();
 
