@@ -1,4 +1,4 @@
-const CACHE_NAME = "qro-tv-digital-v1.7.0";
+const CACHE_NAME = "qro-tv-digital-v1.8.0";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -26,9 +26,13 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+
   const url = new URL(event.request.url);
 
-  if (url.pathname.includes("/_functions/") || url.hostname.includes("youtube.com")) {
+  if (
+    url.hostname === "motortv.scad.mx" ||
+    url.hostname === "cdn.jsdelivr.net"
+  ) {
     event.respondWith(fetch(event.request));
     return;
   }
