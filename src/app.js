@@ -94,7 +94,7 @@ const MAX_REINTENTOS = 6;
 const TIEMPO_ESTABLE = 5000;
 
 function urlHlsNueva() {
-  return `${CANAL_HLS_URL}?t=${Date.now()}`;
+  return CANAL_HLS_URL;
 }
 
 function actualizarEstadoDisponible() {
