@@ -338,6 +338,11 @@ player?.addEventListener('click', () => {
 playerAction?.addEventListener('click', () => {
   usuarioInteractuo = true;
 
+  if (player?.canPlayType('application/vnd.apple.mpegurl')) {
+    iniciarCanal({ reinicio: true });
+    return;
+  }
+
   if (player?.src || hls) {
     intentarPlay();
     return;
@@ -356,7 +361,9 @@ document.addEventListener('visibilitychange', () => {
   }
 
   if (player?.paused || player?.readyState < 2) {
-    if (usuarioInteractuo) {
+    if (player?.canPlayType('application/vnd.apple.mpegurl')) {
+      iniciarCanal({ reinicio: true });
+    } else if (usuarioInteractuo) {
       intentarPlay();
     } else {
       mostrarAccionReproduccion('Toca para continuar la transmisión.');
@@ -367,8 +374,13 @@ document.addEventListener('visibilitychange', () => {
 window.addEventListener('online', () => iniciarCanal({ reinicio: true }));
 window.addEventListener('pageshow', () => {
   if (player?.paused) {
-    if (usuarioInteractuo) intentarPlay();
-    else mostrarAccionReproduccion('Toca para reproducir la transmisión.');
+    if (player?.canPlayType('application/vnd.apple.mpegurl')) {
+      iniciarCanal({ reinicio: true });
+    } else if (usuarioInteractuo) {
+      intentarPlay();
+    } else {
+      mostrarAccionReproduccion('Toca para reproducir la transmisión.');
+    }
   }
 });
 
