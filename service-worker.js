@@ -1,4 +1,4 @@
-const CACHE_NAME = 'qrotv-static-v3-ios-recovery';
+const CACHE_NAME = 'qrotv-static-v4-hls-watchdog';
 const APP_SHELL = [
   './',
   './index.html',
