@@ -1,4 +1,4 @@
-const CACHE_NAME = 'qrotv-pwa-v8';
+const CACHE_NAME = 'qrotv-shell-v4';
 const APP_SHELL = [
   './',
   './index.html',
