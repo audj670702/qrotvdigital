@@ -89,9 +89,14 @@ let intentoReconectar = 0;
 let ultimaReproduccion = 0;
 let inicializando = false;
 let usuarioInteractuo = false;
+let watchdogHls = null;
+let ultimoTiempoHls = 0;
+let ultimaMarcaAvanceHls = 0;
 
 const MAX_REINTENTOS = 6;
 const TIEMPO_ESTABLE = 5000;
+const INTERVALO_WATCHDOG_HLS = 2000;
+const LIMITE_CONGELADO_HLS = 8000;
 
 function urlHlsNueva() {
   return CANAL_HLS_URL;
@@ -144,9 +149,45 @@ function actualizarEstadoError(mensaje = 'No fue posible conectar con la señal 
   }
 }
 
+function detenerWatchdogHls() {
+  if (watchdogHls) {
+    clearInterval(watchdogHls);
+    watchdogHls = null;
+  }
+  ultimoTiempoHls = 0;
+  ultimaMarcaAvanceHls = 0;
+}
+
+function iniciarWatchdogHls() {
+  detenerWatchdogHls();
+
+  ultimoTiempoHls = Number(player?.currentTime || 0);
+  ultimaMarcaAvanceHls = Date.now();
+
+  watchdogHls = setInterval(() => {
+    if (!hls || !player || inicializando) return;
+    if (document.visibilityState !== 'visible') return;
+    if (player.paused) return;
+
+    const tiempoActual = Number(player.currentTime || 0);
+
+    if (tiempoActual > ultimoTiempoHls + 0.25) {
+      ultimoTiempoHls = tiempoActual;
+      ultimaMarcaAvanceHls = Date.now();
+      return;
+    }
+
+    if (Date.now() - ultimaMarcaAvanceHls >= LIMITE_CONGELADO_HLS) {
+      console.warn('HLS watchdog: reproducción detenida, reconstruyendo sesión.');
+      iniciarCanal({ reinicio: true });
+    }
+  }, INTERVALO_WATCHDOG_HLS);
+}
+
 function limpiarReproductorHls() {
   clearTimeout(reintento);
   reintento = null;
+  detenerWatchdogHls();
 
   if (hls) {
     try {
@@ -256,6 +297,7 @@ function iniciarCanal({ reinicio = false } = {}) {
       hls.attachMedia(player);
 
       hls.on(window.Hls.Events.MANIFEST_PARSED, () => {
+        iniciarWatchdogHls();
         intentarPlay();
       });
 
@@ -307,6 +349,20 @@ player?.addEventListener('loadeddata', () => {
 
 player?.addEventListener('playing', () => {
   actualizarEstadoDisponible();
+
+  if (hls) {
+    ultimoTiempoHls = Number(player.currentTime || 0);
+    ultimaMarcaAvanceHls = Date.now();
+  }
+});
+
+player?.addEventListener('timeupdate', () => {
+  if (!hls || !player) return;
+  const tiempoActual = Number(player.currentTime || 0);
+  if (tiempoActual > ultimoTiempoHls + 0.1) {
+    ultimoTiempoHls = tiempoActual;
+    ultimaMarcaAvanceHls = Date.now();
+  }
 });
 
 player?.addEventListener('waiting', () => {
