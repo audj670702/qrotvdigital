@@ -198,12 +198,14 @@ function limpiarReproductorHls() {
   }
 }
 
-async function intentarPlay() {
+async function intentarPlay({ forzarMute = true } = {}) {
   if (!player) return false;
 
   try {
-    player.muted = true;
-    player.defaultMuted = true;
+    if (forzarMute) {
+      player.muted = true;
+      player.defaultMuted = true;
+    }
     await player.play();
     return true;
   } catch (_) {
@@ -303,7 +305,7 @@ function iniciarCanal({ reinicio = false } = {}) {
 
       hls.on(window.Hls.Events.FRAG_LOADED, () => {
         if (player.paused && document.visibilityState === 'visible' && usuarioInteractuo) {
-          intentarPlay();
+          intentarPlay({ forzarMute: false });
         }
       });
 
@@ -388,7 +390,7 @@ player?.addEventListener('pointerdown', () => {
 
 player?.addEventListener('click', () => {
   usuarioInteractuo = true;
-  intentarPlay();
+  intentarPlay({ forzarMute: false });
 });
 
 playerAction?.addEventListener('click', () => {
@@ -400,7 +402,7 @@ playerAction?.addEventListener('click', () => {
   }
 
   if (player?.src || hls) {
-    intentarPlay();
+    intentarPlay({ forzarMute: false });
     return;
   }
 
@@ -420,7 +422,7 @@ document.addEventListener('visibilitychange', () => {
     if (player?.canPlayType('application/vnd.apple.mpegurl')) {
       iniciarCanal({ reinicio: true });
     } else if (usuarioInteractuo) {
-      intentarPlay();
+      intentarPlay({ forzarMute: false });
     } else {
       mostrarAccionReproduccion('Toca para continuar la transmisión.');
     }
@@ -433,7 +435,7 @@ window.addEventListener('pageshow', () => {
     if (player?.canPlayType('application/vnd.apple.mpegurl')) {
       iniciarCanal({ reinicio: true });
     } else if (usuarioInteractuo) {
-      intentarPlay();
+      intentarPlay({ forzarMute: false });
     } else {
       mostrarAccionReproduccion('Toca para reproducir la transmisión.');
     }
