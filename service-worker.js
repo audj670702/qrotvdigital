@@ -1,49 +1,51 @@
-const CACHE_NAME = "qro-tv-digital-v1.8.3";
+const CACHE_NAME = 'qrotv-pwa-v8';
 const APP_SHELL = [
-  "./",
-  "./index.html",
-  "./manifest.webmanifest",
-  "./assets/logo-qro-tv-digital.webp",
-  "./assets/icon-qro-tv.svg",
-  "./assets/icon-qro-tv-maskable.svg",
-  "./src/styles.css",
-  "./src/player.css",
-  "./src/app.js"
+  './',
+  './index.html',
+  './manifest.webmanifest',
+  './src/styles.css',
+  './src/player.css',
+  './src/app.js',
+  './assets/icon-192.png',
+  './assets/icon-512.png'
 ];
 
-self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL))
+  );
   self.skipWaiting();
 });
 
-self.addEventListener("activate", (event) => {
+self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys()
-      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))))
-      .then(() => self.clients.claim())
+    caches.keys().then((keys) =>
+      Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)))
+    )
   );
+  self.clients.claim();
 });
 
-self.addEventListener("fetch", (event) => {
-  if (event.request.method !== "GET") return;
+self.addEventListener('fetch', (event) => {
+  const request = event.request;
 
-  const url = new URL(event.request.url);
+  if (request.method !== 'GET') return;
 
-  if (
-    url.hostname === "motortv.scad.mx" ||
-    url.hostname === "cdn.jsdelivr.net"
-  ) {
-    event.respondWith(fetch(event.request));
+  const url = new URL(request.url);
+  const esHls = /\.m3u8($|\?)/i.test(url.pathname + url.search) || /\.ts($|\?)/i.test(url.pathname + url.search);
+
+  if (esHls || url.hostname === 'motortv.scad.mx') {
+    event.respondWith(fetch(request));
     return;
   }
 
   event.respondWith(
-    fetch(event.request)
-      .then((response) => {
+    caches.match(request).then((cached) =>
+      cached || fetch(request).then((response) => {
         const copy = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
         return response;
       })
-      .catch(() => caches.match(event.request))
+    )
   );
 });
