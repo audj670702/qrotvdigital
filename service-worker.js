@@ -1,4 +1,4 @@
-const CACHE_NAME = 'qrotv-static-v5-audio-control';
+const CACHE_NAME = 'qrotv-static-v6-app-1.8.4';
 const APP_SHELL = [
   './',
   './index.html',
