@@ -92,11 +92,18 @@ let usuarioInteractuo = false;
 let watchdogHls = null;
 let ultimoTiempoHls = 0;
 let ultimaMarcaAvanceHls = 0;
+let recuperandoNativo = false;
+let intentosRecuperacionNativa = 0;
 
 const MAX_REINTENTOS = 6;
 const TIEMPO_ESTABLE = 5000;
 const INTERVALO_WATCHDOG_HLS = 2000;
-const LIMITE_CONGELADO_HLS = 8000;
+const LIMITE_CONGELADO_HLS = 12000;
+const MAX_INTENTOS_RECUPERACION_NATIVA = 3;
+
+function esHlsNativo() {
+  return Boolean(player?.canPlayType('application/vnd.apple.mpegurl'));
+}
 
 function urlHlsNueva() {
   return CANAL_HLS_URL;
@@ -104,12 +111,11 @@ function urlHlsNueva() {
 
 function actualizarEstadoDisponible() {
   intentoReconectar = 0;
+  intentosRecuperacionNativa = 0;
   ultimaReproduccion = Date.now();
 
   if (broadcastStatus) broadcastStatus.textContent = 'TRANSMISIÓN CONTINUA';
-  if (broadcastDescription) {
-    broadcastDescription.textContent = 'Señal permanente de QRO TV DIGITAL.';
-  }
+  if (broadcastDescription) broadcastDescription.textContent = 'Señal permanente de QRO TV DIGITAL.';
   if (nowTitle) nowTitle.textContent = 'QRO TV DIGITAL';
   if (nextTitle) nextTitle.textContent = 'Señal procesada por el motor de continuidad.';
   if (fallback) fallback.hidden = true;
@@ -158,6 +164,77 @@ function detenerWatchdogHls() {
   ultimaMarcaAvanceHls = 0;
 }
 
+function llevarAlPuntoVivoNativo() {
+  if (!player || !esHlsNativo() || !player.buffered?.length) return false;
+
+  try {
+    const ultimoRango = player.buffered.length - 1;
+    const finBuffer = player.buffered.end(ultimoRango);
+    const tiempoActual = Number(player.currentTime || 0);
+
+    if (Number.isFinite(finBuffer) && finBuffer - tiempoActual > 4) {
+      player.currentTime = Math.max(0, finBuffer - 1.5);
+      return true;
+    }
+  } catch (_) {}
+
+  return false;
+}
+
+async function intentarPlay({ forzarMute = true, mostrarAccion = true } = {}) {
+  if (!player) return false;
+
+  try {
+    if (forzarMute) {
+      player.muted = true;
+      player.defaultMuted = true;
+    }
+    await player.play();
+    return true;
+  } catch (_) {
+    if (mostrarAccion && !ES_MONITOR) {
+      mostrarAccionReproduccion('El navegador móvil requiere tocar reproducir.');
+    }
+    return false;
+  }
+}
+
+async function recuperarHlsNativo(motivo = 'Recuperando señal…') {
+  if (!player || !esHlsNativo() || recuperandoNativo || inicializando) return;
+  if (document.visibilityState !== 'visible') return;
+
+  recuperandoNativo = true;
+  intentosRecuperacionNativa += 1;
+  ultimaMarcaAvanceHls = Date.now();
+
+  try {
+    if (broadcastDescription) broadcastDescription.textContent = motivo;
+
+    llevarAlPuntoVivoNativo();
+    const reprodujo = await intentarPlay({ forzarMute: true, mostrarAccion: false });
+
+    if (reprodujo) {
+      setTimeout(() => {
+        if (!player || document.visibilityState !== 'visible') return;
+        const tiempoActual = Number(player.currentTime || 0);
+        if (tiempoActual > ultimoTiempoHls + 0.25) {
+          ultimoTiempoHls = tiempoActual;
+          ultimaMarcaAvanceHls = Date.now();
+          intentosRecuperacionNativa = 0;
+          actualizarEstadoDisponible();
+        }
+      }, 2500);
+      return;
+    }
+
+    if (intentosRecuperacionNativa >= MAX_INTENTOS_RECUPERACION_NATIVA && !ES_MONITOR) {
+      mostrarAccionReproduccion('Toca una vez para continuar la transmisión.');
+    }
+  } finally {
+    recuperandoNativo = false;
+  }
+}
+
 function iniciarWatchdogHls() {
   detenerWatchdogHls();
 
@@ -167,22 +244,29 @@ function iniciarWatchdogHls() {
   watchdogHls = setInterval(() => {
     if (!player || inicializando) return;
     if (document.visibilityState !== 'visible') return;
-    if (player.paused) return;
+
+    if (player.paused) {
+      if (esHlsNativo()) recuperarHlsNativo('Recuperando reproducción…');
+      return;
+    }
 
     const tiempoActual = Number(player.currentTime || 0);
 
     if (tiempoActual > ultimoTiempoHls + 0.25) {
       ultimoTiempoHls = tiempoActual;
       ultimaMarcaAvanceHls = Date.now();
+      intentosRecuperacionNativa = 0;
       return;
     }
 
     if (Date.now() - ultimaMarcaAvanceHls >= LIMITE_CONGELADO_HLS) {
-      console.warn(
-        hls
-          ? 'HLS watchdog: reproducción detenida, reconstruyendo sesión.'
-          : 'HLS nativo watchdog: reproducción detenida, reconstruyendo sesión.'
-      );
+      if (esHlsNativo()) {
+        console.warn('HLS nativo: reproducción sin avance, intentando recuperación suave.');
+        recuperarHlsNativo('Recuperando señal en vivo…');
+        return;
+      }
+
+      console.warn('HLS watchdog: reproducción detenida, reconstruyendo sesión.');
       iniciarCanal({ reinicio: true });
     }
   }, INTERVALO_WATCHDOG_HLS);
@@ -199,24 +283,6 @@ function limpiarReproductorHls() {
       hls.destroy();
     } catch (_) {}
     hls = null;
-  }
-}
-
-async function intentarPlay({ forzarMute = true } = {}) {
-  if (!player) return false;
-
-  try {
-    if (forzarMute) {
-      player.muted = true;
-      player.defaultMuted = true;
-    }
-    await player.play();
-    return true;
-  } catch (_) {
-    if (!ES_MONITOR) {
-      mostrarAccionReproduccion('El navegador móvil requiere tocar reproducir.');
-    }
-    return false;
   }
 }
 
@@ -267,13 +333,13 @@ function iniciarCanal({ reinicio = false } = {}) {
 
     const fuente = urlHlsNueva();
 
-    if (player.canPlayType('application/vnd.apple.mpegurl')) {
+    if (esHlsNativo()) {
       player.src = fuente;
       player.load();
 
       const reproducirCuandoListo = () => {
         iniciarWatchdogHls();
-        intentarPlay();
+        intentarPlay({ forzarMute: true, mostrarAccion: !reinicio });
       };
 
       player.addEventListener('loadedmetadata', reproducirCuandoListo, { once: true });
@@ -350,7 +416,7 @@ function iniciarCanal({ reinicio = false } = {}) {
 
 player?.addEventListener('loadeddata', () => {
   if (player.paused && document.visibilityState === 'visible') {
-    intentarPlay();
+    intentarPlay({ mostrarAccion: !esHlsNativo() });
   }
 });
 
@@ -359,9 +425,7 @@ player?.addEventListener('playing', () => {
   ultimoTiempoHls = Number(player.currentTime || 0);
   ultimaMarcaAvanceHls = Date.now();
 
-  if (!watchdogHls) {
-    iniciarWatchdogHls();
-  }
+  if (!watchdogHls) iniciarWatchdogHls();
 });
 
 player?.addEventListener('timeupdate', () => {
@@ -370,6 +434,7 @@ player?.addEventListener('timeupdate', () => {
   if (tiempoActual > ultimoTiempoHls + 0.1) {
     ultimoTiempoHls = tiempoActual;
     ultimaMarcaAvanceHls = Date.now();
+    intentosRecuperacionNativa = 0;
   }
 });
 
@@ -378,15 +443,32 @@ player?.addEventListener('waiting', () => {
 
   if (broadcastStatus) broadcastStatus.textContent = 'TRANSMISIÓN CONTINUA';
   if (broadcastDescription) broadcastDescription.textContent = 'Recibiendo señal del canal…';
+
+  if (esHlsNativo()) {
+    setTimeout(() => {
+      if (player?.readyState < 3 && document.visibilityState === 'visible') {
+        recuperarHlsNativo('Recuperando señal en vivo…');
+      }
+    }, 5000);
+  }
 });
 
 player?.addEventListener('stalled', () => {
+  if (esHlsNativo()) {
+    recuperarHlsNativo('Recuperando señal en vivo…');
+    return;
+  }
+
   if (!ultimaReproduccion || Date.now() - ultimaReproduccion >= TIEMPO_ESTABLE) {
     programarReconexion('Señal detenida. Restableciendo conexión…');
   }
 });
 
 player?.addEventListener('error', () => {
+  if (esHlsNativo()) {
+    programarReconexion('Restableciendo la señal…');
+    return;
+  }
   programarReconexion('Restableciendo la señal…');
 });
 
@@ -396,14 +478,20 @@ player?.addEventListener('pointerdown', () => {
 
 player?.addEventListener('click', () => {
   usuarioInteractuo = true;
+  if (esHlsNativo()) {
+    llevarAlPuntoVivoNativo();
+    intentarPlay({ forzarMute: false });
+    return;
+  }
   intentarPlay({ forzarMute: false });
 });
 
 playerAction?.addEventListener('click', () => {
   usuarioInteractuo = true;
 
-  if (player?.canPlayType('application/vnd.apple.mpegurl')) {
-    iniciarCanal({ reinicio: true });
+  if (esHlsNativo()) {
+    llevarAlPuntoVivoNativo();
+    intentarPlay({ forzarMute: true, mostrarAccion: true });
     return;
   }
 
@@ -418,6 +506,13 @@ playerAction?.addEventListener('click', () => {
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState !== 'visible') return;
 
+  if (esHlsNativo()) {
+    ultimaMarcaAvanceHls = Date.now();
+    llevarAlPuntoVivoNativo();
+    recuperarHlsNativo('Recuperando transmisión…');
+    return;
+  }
+
   if (hls) {
     try {
       hls.startLoad();
@@ -425,9 +520,7 @@ document.addEventListener('visibilitychange', () => {
   }
 
   if (player?.paused || player?.readyState < 2) {
-    if (player?.canPlayType('application/vnd.apple.mpegurl')) {
-      iniciarCanal({ reinicio: true });
-    } else if (usuarioInteractuo) {
+    if (usuarioInteractuo) {
       intentarPlay({ forzarMute: false });
     } else {
       mostrarAccionReproduccion('Toca para continuar la transmisión.');
@@ -435,12 +528,25 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-window.addEventListener('online', () => iniciarCanal({ reinicio: true }));
+window.addEventListener('online', () => {
+  if (esHlsNativo()) {
+    recuperarHlsNativo('Recuperando conexión…');
+    return;
+  }
+  iniciarCanal({ reinicio: true });
+});
+
 window.addEventListener('pageshow', () => {
-  if (player?.paused) {
-    if (player?.canPlayType('application/vnd.apple.mpegurl')) {
-      iniciarCanal({ reinicio: true });
-    } else if (usuarioInteractuo) {
+  if (!player) return;
+
+  if (esHlsNativo()) {
+    ultimaMarcaAvanceHls = Date.now();
+    recuperarHlsNativo('Recuperando transmisión…');
+    return;
+  }
+
+  if (player.paused) {
+    if (usuarioInteractuo) {
       intentarPlay({ forzarMute: false });
     } else {
       mostrarAccionReproduccion('Toca para reproducir la transmisión.');
