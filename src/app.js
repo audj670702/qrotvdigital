@@ -165,7 +165,7 @@ function iniciarWatchdogHls() {
   ultimaMarcaAvanceHls = Date.now();
 
   watchdogHls = setInterval(() => {
-    if (!hls || !player || inicializando) return;
+    if (!player || inicializando) return;
     if (document.visibilityState !== 'visible') return;
     if (player.paused) return;
 
@@ -178,7 +178,11 @@ function iniciarWatchdogHls() {
     }
 
     if (Date.now() - ultimaMarcaAvanceHls >= LIMITE_CONGELADO_HLS) {
-      console.warn('HLS watchdog: reproducción detenida, reconstruyendo sesión.');
+      console.warn(
+        hls
+          ? 'HLS watchdog: reproducción detenida, reconstruyendo sesión.'
+          : 'HLS nativo watchdog: reproducción detenida, reconstruyendo sesión.'
+      );
       iniciarCanal({ reinicio: true });
     }
   }, INTERVALO_WATCHDOG_HLS);
@@ -268,6 +272,7 @@ function iniciarCanal({ reinicio = false } = {}) {
       player.load();
 
       const reproducirCuandoListo = () => {
+        iniciarWatchdogHls();
         intentarPlay();
       };
 
@@ -351,15 +356,16 @@ player?.addEventListener('loadeddata', () => {
 
 player?.addEventListener('playing', () => {
   actualizarEstadoDisponible();
+  ultimoTiempoHls = Number(player.currentTime || 0);
+  ultimaMarcaAvanceHls = Date.now();
 
-  if (hls) {
-    ultimoTiempoHls = Number(player.currentTime || 0);
-    ultimaMarcaAvanceHls = Date.now();
+  if (!watchdogHls) {
+    iniciarWatchdogHls();
   }
 });
 
 player?.addEventListener('timeupdate', () => {
-  if (!hls || !player) return;
+  if (!player) return;
   const tiempoActual = Number(player.currentTime || 0);
   if (tiempoActual > ultimoTiempoHls + 0.1) {
     ultimoTiempoHls = tiempoActual;
