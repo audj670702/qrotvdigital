@@ -1,11 +1,11 @@
-const CACHE_NAME = 'qrotv-static-v7-app-1.8.5';
+const CACHE_NAME = 'qrotv-static-v8-app-1.8.6';
 const APP_SHELL = [
   './',
   './index.html',
   './manifest.webmanifest',
   './src/styles.css',
   './src/player.css',
-  './src/app.js?v=185',
+  './src/app.js?v=186',
   './assets/icon-192.png',
   './assets/icon-512.png'
 ];
