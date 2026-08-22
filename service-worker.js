@@ -5,7 +5,7 @@ const APP_SHELL = [
   './manifest.webmanifest',
   './src/styles.css',
   './src/player.css',
-  './src/app.js',
+  './src/app.js?v=185',
   './assets/icon-192.png',
   './assets/icon-512.png'
 ];
