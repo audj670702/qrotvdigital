@@ -1,7 +1,7 @@
 {
-  "name": "QRO TV DIGITAL",
-  "short_name": "QRO TV",
-  "description": "Transmisión, producciones, clips y revista digital de Querétaro.",
+  "name": "TV Digital INTERNET",
+  "short_name": "TV Digital",
+  "description": "Transmisión, producciones, clips y revista digital.",
   "lang": "es-MX",
   "id": "./",
   "start_url": "./",
