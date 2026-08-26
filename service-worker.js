@@ -1,13 +1,16 @@
-const CACHE_NAME = 'tvd-static-v11-app-1.8.10';
+const CACHE_NAME = 'tvd-static-v12-app-1.8.12';
 const APP_SHELL = [
   './',
   './index.html',
   './manifest.webmanifest?v=189',
   './src/styles.css',
   './src/player.css',
+  './src/catalogo.css?v=1812',
   './src/audio-preference.js?v=187',
   './src/app.js?v=187',
   './src/on-air.js?v=1810',
+  './src/catalogo-config.js?v=1812',
+  './src/catalogo-programas.js?v=1812',
   './assets/logo_tvd-internet.png',
   './assets/apple-touch-icon-tvd-180.png',
   './assets/icon-tvd-192.png',
@@ -40,7 +43,7 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
   const esHls = /\.m3u8($|\?)/i.test(url.pathname + url.search) || /\.ts($|\?)/i.test(url.pathname + url.search);
 
-  if (esHls || url.hostname === 'motortv.scad.mx' || url.hostname === 'www.scad.mx') {
+  if (esHls || url.hostname === 'motortv.scad.mx' || url.hostname === 'www.scad.mx' || url.hostname === 'scad.mx') {
     event.respondWith(fetch(request));
     return;
   }
