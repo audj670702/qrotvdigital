@@ -4,34 +4,34 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b0c0e">
-  <meta name="description" content="QRO TV DIGITAL: transmisión, producciones, clips y revista.">
+  <meta name="description" content="TV Digital INTERNET: transmisión, producciones, clips y revista.">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="QRO TV">
+  <meta name="apple-mobile-web-app-title" content="TV Digital">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./assets/icon-qro-tv.svg">
-  <link rel="preload" href="./assets/logo-qro-tv-digital.webp" as="image" type="image/webp" fetchpriority="high">
+  <link rel="preload" href="./assets/logo_tvd-internet.png" as="image" type="image/png" fetchpriority="high">
   <link rel="stylesheet" href="./src/styles.css">
   <link rel="stylesheet" href="./src/player.css">
-  <title>QRO TV DIGITAL</title>
+  <title>TV Digital INTERNET</title>
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="#inicio" aria-label="QRO TV DIGITAL, inicio"><img src="./assets/logo-qro-tv-digital.webp" alt="QRO TV DIGITAL" width="360" height="182" fetchpriority="high"></a>
+    <a class="brand" href="#inicio" aria-label="TV Digital INTERNET, inicio"><img src="./assets/logo_tvd-internet.png" alt="TV Digital INTERNET" width="360" height="360" fetchpriority="high"></a>
     <button class="menu-button" type="button" aria-label="Abrir menú" aria-expanded="false">☰</button>
     <nav aria-label="Navegación principal"><a class="active" href="#inicio">Inicio</a><a href="#transmision">Transmisión</a><a href="#producciones">Producciones</a><a href="#clips">Clips</a><a href="#revista">Revista</a></nav>
-    <button id="installAppButton" class="install-app-button" type="button" aria-label="Instalar QRO TV DIGITAL"><span aria-hidden="true">＋</span> Instalar</button>
+    <button id="installAppButton" class="install-app-button" type="button" aria-label="Instalar TV Digital INTERNET"><span aria-hidden="true">＋</span> Instalar</button>
   </header>
   <main id="inicio">
     <section class="broadcast" id="transmision">
       <div class="broadcast-copy">
         <p class="eyebrow"><span class="signal-dot"></span> <span id="broadcastStatus">CARGANDO TRANSMISIÓN</span></p>
-        <h1>La señal de Querétaro,<br><em>creada para internet.</em></h1>
+        <h1>Televisión digital,<br><em>creada para internet.</em></h1>
         <p id="broadcastDescription" class="lead">Conectando con la señal del canal.</p>
         <div class="now-playing"><span>AHORA</span><strong id="nowTitle">Preparando señal…</strong><small id="nextTitle">Espera un momento.</small></div>
       </div>
       <div id="playerShell" class="player-shell" aria-live="polite">
-        <video id="channelPlayer" class="player-frame" autoplay muted playsinline preload="auto" controls aria-label="Transmisión continua QRO TV DIGITAL"></video>
+        <video id="channelPlayer" class="player-frame" autoplay muted playsinline preload="auto" controls aria-label="Transmisión continua TV Digital INTERNET"></video>
         <div id="playerFallback" class="player-fallback">
           <span id="playerStatus" class="status">CARGANDO</span>
           <button id="playerAction" class="play" type="button" aria-label="Iniciar reproducción">▶</button>
@@ -43,8 +43,8 @@
     <section class="clips-section" id="clips"><header class="section-heading light"><div><p class="eyebrow">FORMATO BREVE</p><h2>Clips</h2></div><a href="#clips">Ver todos <span>→</span></a></header><div class="clip-row"><article class="clip"><div class="clip-image clip-one"><span>▶</span><small>01:24</small></div><h3>Una idea en un minuto</h3><p>Lo esencial, sin rodeos.</p></article><article class="clip"><div class="clip-image clip-two"><span>▶</span><small>02:10</small></div><h3>La frase del día</h3><p>Una voz que vale la pena escuchar.</p></article><article class="clip"><div class="clip-image clip-three"><span>▶</span><small>00:48</small></div><h3>Así se vivió</h3><p>Momentos de nuestra ciudad.</p></article><article class="clip"><div class="clip-image clip-four"><span>▶</span><small>01:36</small></div><h3>Detrás de cámara</h3><p>El otro lado de la producción.</p></article></div></section>
     <section class="magazine" id="revista"><header class="section-heading"><div><p class="eyebrow">LECTURA + IMAGEN</p><h2>Revista</h2></div><a href="#revista">Explorar revista <span>→</span></a></header><article class="magazine-feature"><div class="magazine-image"><span>REPORTAJE</span></div><div class="magazine-copy"><p class="kicker">CIUDAD · 8 MIN DE LECTURA</p><h3>Querétaro también se cuenta desde sus calles</h3><p>Una mirada visual a los espacios, las personas y las ideas que transforman la vida cotidiana.</p><a href="#revista">Leer artículo <span>→</span></a></div></article></section>
   </main>
-  <footer><img src="./assets/logo-qro-tv-digital.webp" alt="QRO TV DIGITAL" width="360" height="182" loading="lazy"><p>Transmisión · Producciones · Clips · Revista</p><small class="app-version">Versión 1.8.7</small></footer>
-  <div id="installModal" class="install-modal" hidden><div class="install-modal-card" role="dialog" aria-modal="true" aria-labelledby="installModalTitle"><button id="closeInstallModal" class="install-modal-close" type="button" aria-label="Cerrar">×</button><div class="install-modal-icon">📲</div><h2 id="installModalTitle">Instalar QRO TV DIGITAL</h2><p id="installModalText">Agrega la app a tu pantalla de inicio para abrirla como una aplicación.</p><div id="iosInstallSteps" class="ios-install-steps" hidden><p><strong>En iPhone o iPad:</strong></p><ol><li>Abre esta página en Safari.</li><li>Toca el botón <strong>Compartir</strong> ⎋.</li><li>Selecciona <strong>Agregar a pantalla de inicio</strong>.</li><li>Confirma con <strong>Agregar</strong>.</li></ol></div><button id="installModalAction" class="install-modal-action" type="button">Instalar</button></div></div>
+  <footer><img src="./assets/logo_tvd-internet.png" alt="TV Digital INTERNET" width="360" height="360" loading="lazy"><p>Transmisión · Producciones · Clips · Revista</p><small class="app-version">Versión 1.8.8</small></footer>
+  <div id="installModal" class="install-modal" hidden><div class="install-modal-card" role="dialog" aria-modal="true" aria-labelledby="installModalTitle"><button id="closeInstallModal" class="install-modal-close" type="button" aria-label="Cerrar">×</button><div class="install-modal-icon">📲</div><h2 id="installModalTitle">Instalar TV Digital INTERNET</h2><p id="installModalText">Agrega la app a tu pantalla de inicio para abrirla como una aplicación.</p><div id="iosInstallSteps" class="ios-install-steps" hidden><p><strong>En iPhone o iPad:</strong></p><ol><li>Abre esta página en Safari.</li><li>Toca el botón <strong>Compartir</strong> ⎋.</li><li>Selecciona <strong>Agregar a pantalla de inicio</strong>.</li><li>Confirma con <strong>Agregar</strong>.</li></ol></div><button id="installModalAction" class="install-modal-action" type="button">Instalar</button></div></div>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
   <script src="./src/audio-preference.js?v=187" defer></script>
   <script src="./src/app.js?v=187" defer></script>
