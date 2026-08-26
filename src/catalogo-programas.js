@@ -36,6 +36,7 @@
 
     const art = document.createElement('div');
     art.className = 'program-card-art';
+
     if (imagen) {
       const img = document.createElement('img');
       img.src = imagen;
@@ -71,24 +72,26 @@
     link.appendChild(art);
     link.appendChild(copy);
     article.appendChild(link);
+
     return article;
   }
 
   function render(items) {
-    const activos = Array.isArray(items) ? items.filter(item => item && item.activo !== false) : [];
-    activos.sort((a, b) => Number(a.orden || 0) - Number(b.orden || 0));
+    const programas = Array.isArray(items) ? [...items] : [];
+    programas.sort((a, b) => Number(a.orden || 0) - Number(b.orden || 0));
 
     grid.replaceChildren();
 
-    if (!activos.length) {
+    if (!programas.length) {
       if (status) status.textContent = 'No hay programas disponibles por el momento.';
       return;
     }
 
     const fragment = document.createDocumentFragment();
-    activos.forEach(item => fragment.appendChild(crearTarjeta(item)));
+    programas.forEach(item => fragment.appendChild(crearTarjeta(item)));
     grid.appendChild(fragment);
-    if (status) status.textContent = `${activos.length} programas disponibles`;
+
+    if (status) status.textContent = `${programas.length} programas disponibles`;
   }
 
   async function cargar() {
@@ -108,8 +111,17 @@
       });
 
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
       const data = await response.json();
-      render(Array.isArray(data) ? data : data.items);
+      const programas = Array.isArray(data)
+        ? data
+        : Array.isArray(data.programas)
+          ? data.programas
+          : Array.isArray(data.items)
+            ? data.items
+            : [];
+
+      render(programas);
     } catch (error) {
       console.error('Catálogo de programas:', error);
       if (status) status.textContent = 'No fue posible cargar el catálogo.';
