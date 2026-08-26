@@ -13,6 +13,7 @@
   <link rel="preload" href="./assets/logo_tvd-internet.png" as="image" type="image/png" fetchpriority="high">
   <link rel="stylesheet" href="./src/styles.css">
   <link rel="stylesheet" href="./src/player.css">
+  <link rel="stylesheet" href="./src/catalogo.css?v=1811">
   <title>TV Digital INTERNET</title>
 </head>
 <body>
@@ -39,15 +40,23 @@
         </div>
       </div>
     </section>
-    <section class="content-section" id="producciones"><header class="section-heading"><div><p class="eyebrow">CATÁLOGO</p><h2>Producciones</h2></div><a href="#producciones">Ver catálogo <span>→</span></a></header><div class="production-grid"><article class="card featured-card"><div class="card-art art-one"><span>ESTRENO</span></div><div class="card-copy"><p>ACTUALIDAD</p><h3>Querétaro en perspectiva</h3><span>Conversaciones para entender el presente.</span></div></article><article class="card"><div class="card-art art-two"><span>8 EPISODIOS</span></div><div class="card-copy"><p>ENTREVISTAS</p><h3>Voces de la ciudad</h3><span>Personas que construyen nuevas historias.</span></div></article><article class="card"><div class="card-art art-three"><span>NUEVA SERIE</span></div><div class="card-copy"><p>CULTURA</p><h3>Desde Querétaro</h3><span>Identidad, arte y memoria compartida.</span></div></article></div></section>
+    <section class="content-section" id="producciones">
+      <header class="section-heading">
+        <div><p class="eyebrow">CATÁLOGO</p><h2>Producciones</h2></div>
+      </header>
+      <p id="productionStatus" class="production-status" aria-live="polite">Cargando programas…</p>
+      <div id="productionGrid" class="program-grid"></div>
+    </section>
     <section class="clips-section" id="clips"><header class="section-heading light"><div><p class="eyebrow">FORMATO BREVE</p><h2>Clips</h2></div><a href="#clips">Ver todos <span>→</span></a></header><div class="clip-row"><article class="clip"><div class="clip-image clip-one"><span>▶</span><small>01:24</small></div><h3>Una idea en un minuto</h3><p>Lo esencial, sin rodeos.</p></article><article class="clip"><div class="clip-image clip-two"><span>▶</span><small>02:10</small></div><h3>La frase del día</h3><p>Una voz que vale la pena escuchar.</p></article><article class="clip"><div class="clip-image clip-three"><span>▶</span><small>00:48</small></div><h3>Así se vivió</h3><p>Momentos de nuestra ciudad.</p></article><article class="clip"><div class="clip-image clip-four"><span>▶</span><small>01:36</small></div><h3>Detrás de cámara</h3><p>El otro lado de la producción.</p></article></div></section>
     <section class="magazine" id="revista"><header class="section-heading"><div><p class="eyebrow">LECTURA + IMAGEN</p><h2>Revista</h2></div><a href="#revista">Explorar revista <span>→</span></a></header><article class="magazine-feature"><div class="magazine-image"><span>REPORTAJE</span></div><div class="magazine-copy"><p class="kicker">CIUDAD · 8 MIN DE LECTURA</p><h3>Querétaro también se cuenta desde sus calles</h3><p>Una mirada visual a los espacios, las personas y las ideas que transforman la vida cotidiana.</p><a href="#revista">Leer artículo <span>→</span></a></div></article></section>
   </main>
-  <footer><img src="./assets/logo_tvd-internet.png" alt="TV Digital INTERNET" width="360" height="360" loading="lazy"><p>Transmisión · Producciones · Clips · Revista</p><small class="app-version">Versión 1.8.10</small></footer>
+  <footer><img src="./assets/logo_tvd-internet.png" alt="TV Digital INTERNET" width="360" height="360" loading="lazy"><p>Transmisión · Producciones · Clips · Revista</p><small class="app-version">Versión 1.8.11</small></footer>
   <div id="installModal" class="install-modal" hidden><div class="install-modal-card" role="dialog" aria-modal="true" aria-labelledby="installModalTitle"><button id="closeInstallModal" class="install-modal-close" type="button" aria-label="Cerrar">×</button><div class="install-modal-icon">📲</div><h2 id="installModalTitle">Instalar TV Digital INTERNET</h2><p id="installModalText">Agrega la app a tu pantalla de inicio para abrirla como una aplicación.</p><div id="iosInstallSteps" class="ios-install-steps" hidden><p><strong>En iPhone o iPad:</strong></p><ol><li>Abre esta página en Safari.</li><li>Toca el botón <strong>Compartir</strong> ⎋.</li><li>Selecciona <strong>Agregar a pantalla de inicio</strong>.</li><li>Confirma con <strong>Agregar</strong>.</li></ol></div><button id="installModalAction" class="install-modal-action" type="button">Instalar</button></div></div>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
   <script src="./src/audio-preference.js?v=187" defer></script>
   <script src="./src/app.js?v=187" defer></script>
   <script src="./src/on-air.js?v=1810" defer></script>
+  <script src="./src/catalogo-config.js?v=1811" defer></script>
+  <script src="./src/catalogo-programas.js?v=1811" defer></script>
 </body>
 </html>
