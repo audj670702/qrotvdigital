@@ -1,14 +1,18 @@
-const CACHE_NAME = 'qrotv-static-v9-app-1.8.7';
+const CACHE_NAME = 'tvd-static-v10-app-1.8.9';
 const APP_SHELL = [
   './',
   './index.html',
-  './manifest.webmanifest',
+  './manifest.webmanifest?v=189',
   './src/styles.css',
   './src/player.css',
   './src/audio-preference.js?v=187',
   './src/app.js?v=187',
-  './assets/icon-192.png',
-  './assets/icon-512.png'
+  './assets/logo_tvd-internet.png',
+  './assets/apple-touch-icon-tvd-180.png',
+  './assets/icon-tvd-192.png',
+  './assets/icon-tvd-512.png',
+  './assets/icon-tvd-maskable-192.png',
+  './assets/icon-tvd-maskable-512.png'
 ];
 
 self.addEventListener('install', (event) => {
@@ -37,6 +41,19 @@ self.addEventListener('fetch', (event) => {
 
   if (esHls || url.hostname === 'motortv.scad.mx') {
     event.respondWith(fetch(request));
+    return;
+  }
+
+  if (url.pathname.endsWith('/manifest.webmanifest')) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+          return response;
+        })
+        .catch(() => caches.match(request))
+    );
     return;
   }
 
