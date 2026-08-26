@@ -1,12 +1,26 @@
 (() => {
   const grid = document.getElementById('productionGrid');
   const status = document.getElementById('productionStatus');
+  const search = document.getElementById('productionSearch');
+  const moreButton = document.getElementById('productionMore');
   if (!grid) return;
 
   const endpoint = String(window.TVD_CATALOGO_ENDPOINT || '').trim();
+  const LIMITE_INICIAL = 12;
+  const PASO = 12;
+
+  let programas = [];
+  let visibles = LIMITE_INICIAL;
 
   function textoSeguro(valor) {
     return String(valor ?? '').trim();
+  }
+
+  function normalizarTexto(valor) {
+    return textoSeguro(valor)
+      .toLocaleLowerCase('es-MX')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
   }
 
   function imagenSegura(valor) {
@@ -76,22 +90,57 @@
     return article;
   }
 
-  function render(items) {
-    const programas = Array.isArray(items) ? [...items] : [];
-    programas.sort((a, b) => Number(a.orden || 0) - Number(b.orden || 0));
+  function obtenerFiltrados() {
+    const termino = normalizarTexto(search?.value || '');
+    if (!termino) return programas;
+
+    return programas.filter((item) => {
+      const contenido = normalizarTexto([
+        item.nombrePrograma,
+        item.descripcion
+      ].filter(Boolean).join(' '));
+      return contenido.includes(termino);
+    });
+  }
+
+  function actualizarBoton(totalFiltrados, buscando) {
+    if (!moreButton) return;
+
+    const hayMas = !buscando && visibles < totalFiltrados;
+    moreButton.hidden = !hayMas;
+
+    if (hayMas) {
+      const restantes = totalFiltrados - visibles;
+      moreButton.textContent = `Ver más (${restantes})`;
+    }
+  }
+
+  function render() {
+    const filtrados = obtenerFiltrados();
+    const buscando = Boolean(textoSeguro(search?.value));
+    const itemsMostrar = buscando ? filtrados : filtrados.slice(0, visibles);
 
     grid.replaceChildren();
 
-    if (!programas.length) {
-      if (status) status.textContent = 'No hay programas disponibles por el momento.';
+    if (!filtrados.length) {
+      if (status) status.textContent = buscando
+        ? 'No encontramos programas con ese nombre.'
+        : 'No hay programas disponibles por el momento.';
+      actualizarBoton(0, buscando);
       return;
     }
 
     const fragment = document.createDocumentFragment();
-    programas.forEach(item => fragment.appendChild(crearTarjeta(item)));
+    itemsMostrar.forEach(item => fragment.appendChild(crearTarjeta(item)));
     grid.appendChild(fragment);
 
-    if (status) status.textContent = `${programas.length} programas disponibles`;
+    if (status) {
+      status.textContent = buscando
+        ? `${filtrados.length} resultado${filtrados.length === 1 ? '' : 's'}`
+        : `${programas.length} programas · mostrando ${itemsMostrar.length}`;
+    }
+
+    actualizarBoton(filtrados.length, buscando);
   }
 
   async function cargar() {
@@ -113,7 +162,7 @@
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
       const data = await response.json();
-      const programas = Array.isArray(data)
+      programas = Array.isArray(data)
         ? data
         : Array.isArray(data.programas)
           ? data.programas
@@ -121,12 +170,23 @@
             ? data.items
             : [];
 
-      render(programas);
+      programas.sort((a, b) => Number(a.orden || 0) - Number(b.orden || 0));
+      render();
     } catch (error) {
       console.error('Catálogo de programas:', error);
       if (status) status.textContent = 'No fue posible cargar el catálogo.';
     }
   }
+
+  search?.addEventListener('input', () => {
+    visibles = LIMITE_INICIAL;
+    render();
+  });
+
+  moreButton?.addEventListener('click', () => {
+    visibles += PASO;
+    render();
+  });
 
   cargar();
 })();
