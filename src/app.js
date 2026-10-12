@@ -5,7 +5,7 @@ const CANALES = {
   digital: {
     tipo: 'hls',
     nombre: 'TV Digital Internet',
-    url: 'https://motortv.scad.mx/hls/canal.m3u8'
+    url: 'https://tvdigital.scad.mx/cfcx/canal/index.m3u8'
   },
   parrilla: {
     tipo: 'pendiente',

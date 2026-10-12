@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tvd-static-v12-app-1.8.12';
+const CACHE_NAME = 'tvd-static-v13-senal-tvdigital';
 const APP_SHELL = [
   './',
   './index.html',
@@ -7,7 +7,7 @@ const APP_SHELL = [
   './src/player.css',
   './src/catalogo.css?v=1812',
   './src/audio-preference.js?v=187',
-  './src/app.js?v=187',
+  './src/app.js?v=189',
   './src/on-air.js?v=1810',
   './src/catalogo-config.js?v=1812',
   './src/catalogo-programas.js?v=1812',
